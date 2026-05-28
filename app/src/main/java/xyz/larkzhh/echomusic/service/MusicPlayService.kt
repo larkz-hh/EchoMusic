@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import androidx.core.content.ContextCompat
 import xyz.larkzhh.echomusic.EchoApplication
 import xyz.larkzhh.echomusic.broadcast.MusicNotificationReceiver
 import xyz.larkzhh.echomusic.utils.MusicNotificationHelper
@@ -52,10 +53,15 @@ class MusicPlayService : Service() {
 
     private fun registerBroadcastReceiver() {
         if (mReceiver == null) {
-            mReceiver = MusicNotificationReceiver()
-            registerReceiver(mReceiver, IntentFilter().apply {
-                addAction(MusicNotificationReceiver.ACTION_MUSIC_NOTIFICATION)
-            })
+            val receiver = MusicNotificationReceiver()
+            mReceiver = receiver
+            // Android 14+ 需声明接收器是否导出
+            ContextCompat.registerReceiver(
+                this,
+                receiver,
+                IntentFilter(MusicNotificationReceiver.ACTION_MUSIC_NOTIFICATION),
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
         }
     }
 
