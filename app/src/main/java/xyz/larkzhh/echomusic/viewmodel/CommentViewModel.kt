@@ -35,6 +35,8 @@ class CommentViewModel @Inject constructor(private val api: NeteaseApi) : BaseVi
         FloorCommentViewModel.Companion.resourceId = id
 
         return buildPager(
+            distinctBy = { it.commentId },
+            hasMoreBlock = { it.data.hasMore },
             transformListBlock = {
                 cursors[sortType] = it?.data?.cursor ?: ""
                 val commentCount = it?.data?.totalCount ?: 0
