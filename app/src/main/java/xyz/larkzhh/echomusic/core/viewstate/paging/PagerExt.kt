@@ -15,15 +15,26 @@ fun <R : BaseResult, I : Any> ViewModel.buildPager(
     config: AppPagingConfig = AppPagingConfig(),
     //judgeEmpty: ((R) -> Boolean)? = null,
 //    listSpan: Int = 1,
+    distinctBy: ((I) -> Any)? = null,
+    hasMoreBlock: ((R) -> Boolean)? = null,
     transformListBlock: (r: R?) -> List<I>?,
     callBlock: suspend (page: Int, config: Int) -> R
 ): Flow<PagingData<I>> {
+
+    // 跨页去重，避免重复 key 导致崩溃
+    val seenKeys = Collections.synchronizedSet(HashSet<Any>())
 
     return pager(config, 1) {
         val currentPage = it.key ?: 1
         val result = callBlock.invoke(currentPage, if (currentPage == 1) config.initialLoadSize else config.pageSize)
         if (result.resultOk()) {
-            val responseList = transformListBlock.invoke(result) ?: emptyList()
+            var responseList = transformListBlock.invoke(result) ?: emptyList()
+            if (currentPage == 1) {
+                seenKeys.clear()
+            }
+            if (distinctBy != null) {
+                responseList = responseList.filter { item -> seenKeys.add(distinctBy(item)) }
+            }
             val everyPageSize = config.pageSize
             val initPageSize = config.initialLoadSize
             val preKey = if (currentPage == 1) null else currentPage.minus(1)
@@ -34,6 +45,10 @@ fun <R : BaseResult, I : Any> ViewModel.buildPager(
             }
 
             if (responseList.size < everyPageSize || !config.enableLoadMore) {
+                nextKey = null
+            }
+            // 无更多数据时停止翻页
+            if (hasMoreBlock?.invoke(result) == false) {
                 nextKey = null
             }
 
