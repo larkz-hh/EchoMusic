@@ -1,7 +1,19 @@
 package xyz.larkzhh.echomusic.core.player
 
-import android.media.MediaPlayer
 import android.util.Log
+import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import xyz.larkzhh.echomusic.EchoApplication
+import xyz.larkzhh.echomusic.core.UserSpace
 import xyz.larkzhh.echomusic.core.player.event.PauseSongEvent
 import xyz.larkzhh.echomusic.core.player.event.PlaySongEvent
 import xyz.larkzhh.echomusic.hilt.entrypoint.EntryPointFinder
@@ -9,37 +21,60 @@ import xyz.larkzhh.echomusic.model.SongBean
 import xyz.larkzhh.echomusic.service.MusicPlayService
 import kotlinx.coroutines.*
 import org.greenrobot.eventbus.EventBus
-import java.util.*
+import java.util.ArrayList
 
-/**
- * Created by cloudMusic on 2022/4/23.
- */
-object EchoPlayer : IPlayer,
-    MediaPlayer.OnCompletionListener,
-    MediaPlayer.OnPreparedListener,
-    MediaPlayer.OnBufferingUpdateListener,
-    MediaPlayer.OnErrorListener {
+
+object EchoPlayer : IPlayer {
 
     private var mStatus: PlayerStatus = PlayerStatus.IDLE
     var mCurSongBean: SongBean? = null
 
-    private val mMediaPlayer = MediaPlayer()
-
-    private val mTimer: Timer = Timer()
-    private var mUpdateDuringTask: TimerTask? = null
+    private var mPlayer: ExoPlayer? = null
+    private var mProgressJob: Job? = null
     private val mListeners = ArrayList<IPlayerListener>()
     private var mJob: Job? = null
 
-    // 使用 SupervisorJob 替代 GlobalScope，便于生命周期管理
-    private val playerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
+    private val playerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val echoApi = EntryPointFinder.getEchoApi()
 
-    init {
-        mMediaPlayer.setOnCompletionListener(this)
-        mMediaPlayer.setOnPreparedListener(this)
-        mMediaPlayer.setOnBufferingUpdateListener(this)
-        mMediaPlayer.setOnErrorListener(this)
+    private fun player(): ExoPlayer = mPlayer ?: buildPlayer().also { mPlayer = it }
+
+    private fun buildPlayer(): ExoPlayer {
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .build()
+        return ExoPlayer.Builder(EchoApplication.context)
+            .setAudioAttributes(audioAttributes, true)
+            .build().apply {
+            addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    when (playbackState) {
+                        Player.STATE_READY -> {
+                            // 只在首次就绪时自动开播，避免暂停后重新缓冲把播放拉起来
+                            if (mStatus == PlayerStatus.IDLE) {
+                                setStatus(PlayerStatus.PREPARED)
+                                innerStartPlay()
+                            }
+                        }
+                        Player.STATE_ENDED -> {
+                            mProgressJob?.cancel()
+                            setStatus(PlayerStatus.COMPLETED)
+                            Log.d("cloudMusic", "onCompletion done")
+                        }
+                        // 空闲与缓冲无需额外处理
+                        Player.STATE_IDLE, Player.STATE_BUFFERING -> Unit
+                    }
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    Log.e("cloudMusic", "onError ${error.errorCodeName}")
+                    mProgressJob?.cancel()
+                    setStatus(PlayerStatus.ERROR)
+                    setStatus(PlayerStatus.IDLE)
+                }
+            })
+        }
     }
 
     fun addListener(listener: IPlayerListener) {
@@ -81,10 +116,7 @@ object EchoPlayer : IPlayer,
                 } else {
                     rawUrl
                 }
-                mMediaPlayer.reset()
-                mMediaPlayer.setDataSource(url)
-                mMediaPlayer.prepareAsync()
-                Log.d("cloudMusic", "prepareAsync()")
+                playUrl(url, songId)
             } catch (e: Exception) {
                 if (e !is CancellationException) {
                     Log.e("cloudMusic", "getSongUrlAndPlay e = $e")
@@ -97,12 +129,32 @@ object EchoPlayer : IPlayer,
         }
     }
 
+    @OptIn(UnstableApi::class)
+    private fun playUrl(url: String, songId: Long) {
+        val dataSourceFactory = CacheDataSource.Factory()
+            .setCache(MediaCache.get(EchoApplication.context))
+            .setUpstreamDataSourceFactory(
+                DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
+            )
+            .setCacheKeyFactory { "${UserSpace.id}:$songId" }
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+
+        val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
+            .createMediaSource(MediaItem.fromUri(url))
+
+        val exoPlayer = player()
+        exoPlayer.stop()
+        exoPlayer.setMediaSource(mediaSource)
+        exoPlayer.prepare()
+        exoPlayer.playWhenReady = true
+    }
+
     override fun pause() {
         if (mStatus == PlayerStatus.STARTED) {
             Log.d("cloudMusic", "pause()")
-            mUpdateDuringTask?.cancel()
+            mProgressJob?.cancel()
             setStatus(PlayerStatus.PAUSED)
-            mMediaPlayer.pause()
+            mPlayer?.pause()
             EventBus.getDefault().post(PauseSongEvent())
         }
     }
@@ -113,54 +165,32 @@ object EchoPlayer : IPlayer,
     }
 
     override fun stop() {
-        mUpdateDuringTask?.cancel()
-        mMediaPlayer.stop()
+        mProgressJob?.cancel()
+        mPlayer?.stop()
         setStatus(PlayerStatus.STOPPED)
         setStatus(PlayerStatus.IDLE)
         Log.d("cloudMusic", "stop()")
     }
 
     override fun seekTo(position: Int) {
-        mMediaPlayer.seekTo(position)
-    }
-
-    override fun onCompletion(mp: MediaPlayer) {
-        mUpdateDuringTask?.cancel()
-        setStatus(PlayerStatus.COMPLETED)
-        Log.d("cloudMusic", "onCompletion done")
-    }
-
-    override fun onPrepared(mp: MediaPlayer?) {
-        setStatus(PlayerStatus.PREPARED)
-        innerStartPlay()
+        mPlayer?.seekTo(position.toLong())
     }
 
     private fun innerStartPlay() {
         Log.d("cloudMusic", "innerStartPlay()")
-        mMediaPlayer.start()
+        mPlayer?.play()
         setStatus(PlayerStatus.STARTED)
         mCurSongBean?.let {
             EventBus.getDefault().post(PlaySongEvent())
         }
-        mUpdateDuringTask?.cancel()
-        mUpdateDuringTask = object : TimerTask() {
-            override fun run() {
+        mProgressJob?.cancel()
+        // 主线程轮询进度，ExoPlayer 不允许跨线程访问
+        mProgressJob = playerScope.launch {
+            while (isActive) {
                 setProgress()
+                delay(1000)
             }
-        }.apply {
-            mTimer.schedule(this, 0, 1000)
         }
-    }
-
-    override fun onBufferingUpdate(mp: MediaPlayer?, percent: Int) {
-    }
-
-    override fun onError(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
-        Log.e("cloudMusic", "onError what=${what},extra=${extra}")
-        mUpdateDuringTask?.cancel()
-        setStatus(PlayerStatus.ERROR)
-        setStatus(PlayerStatus.IDLE)
-        return true
     }
 
     private fun setStatus(status: PlayerStatus) {
@@ -171,9 +201,15 @@ object EchoPlayer : IPlayer,
     }
 
     private fun setProgress() {
+        val exoPlayer = mPlayer ?: return
+        val duration = exoPlayer.duration
+        if (duration <= 0) {
+            return
+        }
+        val position = exoPlayer.currentPosition
+        val percentage = (position * 100f / duration + 0.5f).toInt()
         mListeners.forEach {
-            val percentage = ((mMediaPlayer.currentPosition * 100f / mMediaPlayer.duration) + 0.5f).toInt()
-            it.onProgress(mMediaPlayer.duration, mMediaPlayer.currentPosition, percentage)
+            it.onProgress(duration.toInt(), position.toInt(), percentage)
         }
     }
 }
