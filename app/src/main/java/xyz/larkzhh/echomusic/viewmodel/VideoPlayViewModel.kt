@@ -10,10 +10,16 @@ import androidx.compose.runtime.setValue
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_READY
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
+import xyz.larkzhh.echomusic.EchoApplication
 import xyz.larkzhh.echomusic.core.MusicPlayController
+import xyz.larkzhh.echomusic.core.UserSpace
+import xyz.larkzhh.echomusic.core.player.MediaCache
 import xyz.larkzhh.echomusic.core.viewstate.BaseViewStateViewModel
 import xyz.larkzhh.echomusic.core.viewstate.paging.AppPagingConfig
 import xyz.larkzhh.echomusic.core.viewstate.paging.buildPager
@@ -158,9 +164,20 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
      * 加载视频
      */
     fun loadVideo(url: String) {
-        val playUri = Uri.parse(url)
-        val item = MediaItem.fromUri(playUri)
-        exoPlayer.setMediaItem(item)
+        // 缓存键用视频 id，避免地址带签名变化后缓存失效
+        val cacheKey = "${UserSpace.id}:video:${curVideoId ?: url}"
+        val dataSourceFactory = CacheDataSource.Factory()
+            .setCache(MediaCache.get(EchoApplication.context))
+            .setUpstreamDataSourceFactory(
+                DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
+            )
+            .setCacheKeyFactory { cacheKey }
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+
+        val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
+            .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
+
+        exoPlayer.setMediaSource(mediaSource)
         exoPlayer.repeatMode = Player.REPEAT_MODE_ONE
         exoPlayer.playWhenReady = true
         exoPlayer.prepare()
