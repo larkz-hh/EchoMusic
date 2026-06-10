@@ -132,7 +132,7 @@ object EchoPlayer : IPlayer {
     @OptIn(UnstableApi::class)
     private fun playUrl(url: String, songId: Long) {
         val dataSourceFactory = CacheDataSource.Factory()
-            .setCache(MediaCache.get(EchoApplication.context))
+            .setCache(MediaCache.audio(EchoApplication.context))
             .setUpstreamDataSourceFactory(
                 DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
             )
