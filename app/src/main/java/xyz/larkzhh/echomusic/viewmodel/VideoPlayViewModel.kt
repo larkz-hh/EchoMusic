@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_READY
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -29,6 +30,7 @@ import xyz.larkzhh.echomusic.model.MvDetailData
 import xyz.larkzhh.echomusic.model.Subscribers
 import xyz.larkzhh.echomusic.model.Video
 import xyz.larkzhh.echomusic.model.VideoUrlBean
+import xyz.larkzhh.echomusic.utils.NetworkUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import java.util.*
@@ -163,16 +165,22 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
     /**
      * 加载视频
      */
+    @OptIn(UnstableApi::class)
     fun loadVideo(url: String) {
         // 缓存键用视频 id，避免地址带签名变化后缓存失效
         val cacheKey = "${UserSpace.id}:video:${curVideoId ?: url}"
         val dataSourceFactory = CacheDataSource.Factory()
-            .setCache(MediaCache.get(EchoApplication.context))
+            .setCache(MediaCache.video(EchoApplication.context))
             .setUpstreamDataSourceFactory(
                 DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
             )
             .setCacheKeyFactory { cacheKey }
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+
+        // 移动网络下只读缓存，不写入新数据
+        if (!NetworkUtil.isWifi(EchoApplication.context)) {
+            dataSourceFactory.setCacheWriteDataSinkFactory(null)
+        }
 
         val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
             .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
