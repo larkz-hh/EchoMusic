@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import xyz.larkzhh.echomusic.core.viewstate.BaseViewStateViewModel
 import xyz.larkzhh.echomusic.core.viewstate.ViewStateMutableStateFlow
 import xyz.larkzhh.echomusic.http.NeteaseApi
+import xyz.larkzhh.echomusic.model.HotSearchResult
 import xyz.larkzhh.echomusic.model.SearchResult
 import xyz.larkzhh.echomusic.model.SearchSong
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,10 +18,24 @@ class SearchViewModel @Inject constructor(
 ) : BaseViewStateViewModel() {
 
     val searchResultState = ViewStateMutableStateFlow<SearchResult>()
+    val hotSearchState = ViewStateMutableStateFlow<HotSearchResult>()
 
     var keyword by mutableStateOf("")
     var songs by mutableStateOf<List<SearchSong>>(emptyList())
         private set
+    var hotWords by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    fun loadHotSearch() {
+        launch(hotSearchState, handleSuccessBlock = { result ->
+            hotWords = result.data.orEmpty()
+                .map { it.searchWord }
+                .filter { it.isNotBlank() }
+                .take(10)
+        }) {
+            api.getHotSearch()
+        }
+    }
 
     fun getSearch(input: String) {
         keyword = input
@@ -35,4 +50,3 @@ class SearchViewModel @Inject constructor(
         }
     }
 }
-
