@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.larkzhh.echomusic.R
 import xyz.larkzhh.echomusic.compose.CommonTopAppBar
+import xyz.larkzhh.echomusic.nav.EchoNavController
+import xyz.larkzhh.echomusic.nav.RouterUrls
 import xyz.larkzhh.echomusic.ui.page.discovery.component.CpnDiscoveryBanner
 import xyz.larkzhh.echomusic.ui.page.discovery.component.CpnDiscoveryCuratedPlaylists
 import xyz.larkzhh.echomusic.ui.page.discovery.component.CpnDiscoveryEntryGrid
@@ -52,6 +54,10 @@ fun DiscoveryPage(drawerState: DrawerState) {
                         drawerState.open()
                     }
                 }
+            },
+            rightIconResId = R.drawable.ic_search,
+            rightClick = {
+                EchoNavController.instance.navigate(RouterUrls.SEARCH)
             })
         LazyColumn(
             modifier = Modifier.fillMaxSize(),

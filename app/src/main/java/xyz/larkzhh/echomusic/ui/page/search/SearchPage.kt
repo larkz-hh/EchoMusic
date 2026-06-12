@@ -4,12 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,6 +26,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.larkzhh.echomusic.R
 import xyz.larkzhh.echomusic.compose.CommonIcon
+import xyz.larkzhh.echomusic.compose.CommonNetworkImage
+import xyz.larkzhh.echomusic.core.MusicPlayController
+import xyz.larkzhh.echomusic.model.Al
+import xyz.larkzhh.echomusic.model.Ar
+import xyz.larkzhh.echomusic.model.SearchSong
+import xyz.larkzhh.echomusic.model.SongBean
 import xyz.larkzhh.echomusic.nav.EchoNavController
 import xyz.larkzhh.echomusic.ui.theme.AppColorsProvider
 import xyz.larkzhh.echomusic.utils.cdp
@@ -37,47 +44,36 @@ fun SearchPage() {
     var keyword by remember { mutableStateOf("") }
     var hasSearched by remember { mutableStateOf(false) }
     val resultList = viewModel.songs
+    val playList = resultList.map { it.toSongBean() }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadHotSearch()
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(AppColorsProvider.current.background)) {
         SearchTopBar(
             keyword = keyword,
             onKeywordChange = { keyword = it },
             onSearchClick = {
-                hasSearched = true
-                viewModel.getSearch(keyword)
+                if (keyword.isNotBlank()) {
+                    hasSearched = true
+                    viewModel.getSearch(keyword)
+                }
             }
         )
         if (!hasSearched) {
-            SearchEntryRow()
-            GuessLikeSection()
+            HotSearchSection(viewModel.hotWords) { word ->
+                keyword = word
+                hasSearched = true
+                viewModel.getSearch(word)
+            }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(top = 8.cdp)) {
-                items(resultList) { item ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(96.cdp)
-                            .padding(horizontal = 24.cdp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = item.name.orEmpty(),
-                                color = AppColorsProvider.current.firstText,
-                                fontSize = 24.csp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = item.artists?.firstOrNull()?.name.orEmpty(),
-                                color = AppColorsProvider.current.secondText,
-                                fontSize = 20.csp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                itemsIndexed(resultList) { index, item ->
+                    SearchSongRow(item) {
+                        MusicPlayController.setDataSource(playList, index)
+                        MusicPlayController.showCpnBottomMusicPlay = false
+                        MusicPlayController.showPlayMusicSheet = true
                     }
                 }
                 if (resultList.isEmpty()) {
@@ -92,6 +88,53 @@ fun SearchPage() {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SearchSongRow(song: SearchSong, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 24.cdp, vertical = 10.cdp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CommonNetworkImage(
+            url = song.al?.picUrl,
+            placeholder = R.drawable.ic_default_disk_cover,
+            error = R.drawable.ic_default_disk_cover,
+            modifier = Modifier
+                .size(88.cdp)
+                .clip(RoundedCornerShape(12.cdp))
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 20.cdp)
+        ) {
+            Text(
+                text = song.name.orEmpty(),
+                color = AppColorsProvider.current.firstText,
+                fontSize = 26.csp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = song.subtitle(),
+                color = AppColorsProvider.current.secondText,
+                fontSize = 22.csp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.cdp)
+            )
+        }
+        Text(
+            text = song.durationText(),
+            color = AppColorsProvider.current.thirdText,
+            fontSize = 22.csp
+        )
     }
 }
 
@@ -128,7 +171,7 @@ private fun SearchTopBar(
             textStyle = TextStyle(fontSize = 14.sp),
             placeholder = {
                 Text(
-                    "桃德李 Todd Li",
+                    "搜索歌曲、歌手、歌单",
                     color = AppColorsProvider.current.secondText,
                     fontSize = 14.sp
                 )
@@ -163,85 +206,77 @@ private fun SearchTopBar(
 }
 
 @Composable
-private fun SearchEntryRow() {
-    Row(
+private fun HotSearchSection(words: List<String>, onClick: (String) -> Unit) {
+    if (words.isEmpty()) {
+        return
+    }
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.cdp, vertical = 14.cdp),
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = 24.cdp, vertical = 10.cdp)
     ) {
-        SearchEntryItem(R.drawable.ic_mine, "歌手")
-        SearchEntryItem(R.drawable.ic_sing, "曲风")
-        SearchEntryItem(R.drawable.ic_cloud_country, "专区")
-        SearchEntryItem(R.drawable.ic_play_list, "识曲")
-    }
-}
-
-@Composable
-private fun SearchEntryItem(icon: Int, title: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        CommonIcon(
-            resId = icon,
-            modifier = Modifier.size(34.cdp),
-            tint = AppColorsProvider.current.secondIcon
-        )
         Text(
-            text = title,
-            fontSize = 24.csp,
+            text = "热门搜索",
             color = AppColorsProvider.current.firstText,
-            modifier = Modifier.padding(start = 8.cdp)
+            fontSize = 28.csp,
+            fontWeight = FontWeight.Bold
         )
-    }
-}
-
-@Composable
-private fun GuessLikeSection() {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.cdp, vertical = 10.cdp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "猜你喜欢",
-                color = AppColorsProvider.current.firstText,
-                fontSize = 28.csp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "⟳",
-                color = AppColorsProvider.current.secondText,
-                fontSize = 24.csp
-            )
-        }
         Spacer(modifier = Modifier.height(16.cdp))
-        GUESS_LIKE.chunked(2).forEach { pair ->
+        words.chunked(2).forEachIndexed { rowIndex, pair ->
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 8.cdp)) {
-                Text(
-                    text = pair.getOrNull(0) ?: "",
-                    modifier = Modifier.weight(1f),
-                    fontSize = 22.csp,
-                    color = AppColorsProvider.current.secondText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = pair.getOrNull(1) ?: "",
-                    modifier = Modifier.weight(1f),
-                    fontSize = 22.csp,
-                    color = AppColorsProvider.current.secondText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                pair.forEachIndexed { columnIndex, word ->
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onClick(word) }
+                            .padding(vertical = 6.cdp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${rowIndex * 2 + columnIndex + 1}",
+                            color = AppColorsProvider.current.primary,
+                            fontSize = 22.csp,
+                            modifier = Modifier.width(36.cdp)
+                        )
+                        Text(
+                            text = word,
+                            color = AppColorsProvider.current.secondText,
+                            fontSize = 22.csp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                if (pair.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }
 }
 
-private val GUESS_LIKE = listOf(
-    "海屿你", "Lukas Rieger",
-    "儿歌多多", "贝乐虎儿歌",
-    "郑润泽", "薛之谦",
-    "房东的猫", "毛不易",
-)
+private fun SearchSong.subtitle(): String {
+    val artists = ar.orEmpty().mapNotNull { it.name }.joinToString("/")
+    val album = al?.name.orEmpty()
+    return listOf(artists, album).filter { it.isNotBlank() }.joinToString(" · ")
+}
 
+private fun SearchSong.durationText(): String {
+    val millis = dt ?: 0L
+    if (millis <= 0) {
+        return ""
+    }
+    val seconds = millis / 1000
+    return "%02d:%02d".format(seconds / 60, seconds % 60)
+}
+
+private fun SearchSong.toSongBean(): SongBean = SongBean(
+    id = id ?: 0L,
+    name = name.orEmpty(),
+    al = Al(
+        id = al?.id ?: 0L,
+        name = al?.name.orEmpty(),
+        picUrl = al?.picUrl.orEmpty()
+    ),
+    ar = ar.orEmpty().map { Ar(id = it.id ?: 0L, name = it.name.orEmpty()) }
+)
