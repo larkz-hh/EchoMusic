@@ -192,13 +192,21 @@ object MusicNotificationHelper {
     }
 
     private suspend fun Context.getImageBitmapByUrl(url: String): Bitmap? {
+        if (url.isBlank()) {
+            return null
+        }
+        val resolvedUrl = if (url.startsWith("http://", ignoreCase = true)) {
+            url.replaceFirst("http://", "https://", ignoreCase = true)
+        } else {
+            url
+        }
         val request = ImageRequest.Builder(this)
             .size(200)
-            .data(url)
+            .data(resolvedUrl)
             .allowHardware(false)
             .build()
-        val result = (imageLoader.execute(request) as SuccessResult).drawable
-        return (result as BitmapDrawable).bitmap
+        val drawable = (imageLoader.execute(request) as? SuccessResult)?.drawable ?: return null
+        return (drawable as? BitmapDrawable)?.bitmap
     }
 }
 
