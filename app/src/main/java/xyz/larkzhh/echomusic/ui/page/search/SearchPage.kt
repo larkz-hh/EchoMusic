@@ -33,6 +33,9 @@ import xyz.larkzhh.echomusic.model.Ar
 import xyz.larkzhh.echomusic.model.SearchSong
 import xyz.larkzhh.echomusic.model.SongBean
 import xyz.larkzhh.echomusic.nav.EchoNavController
+import xyz.larkzhh.echomusic.ui.page.playmusic.PlayListSheet
+import xyz.larkzhh.echomusic.ui.page.playmusic.PlayMusicSheet
+import xyz.larkzhh.echomusic.ui.page.playmusic.component.CpnBottomPlayMusic
 import xyz.larkzhh.echomusic.ui.theme.AppColorsProvider
 import xyz.larkzhh.echomusic.utils.cdp
 import xyz.larkzhh.echomusic.utils.csp
@@ -50,44 +53,50 @@ fun SearchPage() {
         viewModel.loadHotSearch()
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(AppColorsProvider.current.background)) {
-        SearchTopBar(
-            keyword = keyword,
-            onKeywordChange = { keyword = it },
-            onSearchClick = {
-                if (keyword.isNotBlank()) {
-                    hasSearched = true
-                    viewModel.getSearch(keyword)
-                }
-            }
-        )
-        if (!hasSearched) {
-            HotSearchSection(viewModel.hotWords) { word ->
-                keyword = word
-                hasSearched = true
-                viewModel.getSearch(word)
-            }
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(top = 8.cdp)) {
-                itemsIndexed(resultList) { index, item ->
-                    SearchSongRow(item) {
-                        MusicPlayController.setDataSource(playList, index)
-                        MusicPlayController.showCpnBottomMusicPlay = false
-                        MusicPlayController.showPlayMusicSheet = true
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().background(AppColorsProvider.current.background)) {
+            SearchTopBar(
+                keyword = keyword,
+                onKeywordChange = { keyword = it },
+                onSearchClick = {
+                    if (keyword.isNotBlank()) {
+                        hasSearched = true
+                        viewModel.getSearch(keyword)
                     }
                 }
-                if (resultList.isEmpty()) {
-                    item {
-                        Text(
-                            text = "暂无搜索结果",
-                            color = AppColorsProvider.current.secondText,
-                            fontSize = 22.csp,
-                            modifier = Modifier.padding(horizontal = 24.cdp, vertical = 20.cdp)
-                        )
+            )
+            if (!hasSearched) {
+                HotSearchSection(viewModel.hotWords) { word ->
+                    keyword = word
+                    hasSearched = true
+                    viewModel.getSearch(word)
+                }
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(top = 8.cdp)) {
+                    itemsIndexed(resultList) { index, item ->
+                        SearchSongRow(item) {
+                            MusicPlayController.setDataSource(playList, index)
+                            MusicPlayController.showCpnBottomMusicPlay = false
+                            MusicPlayController.showPlayMusicSheet = true
+                        }
+                    }
+                    if (resultList.isEmpty()) {
+                        item {
+                            Text(
+                                text = "暂无搜索结果",
+                                color = AppColorsProvider.current.secondText,
+                                fontSize = 22.csp,
+                                modifier = Modifier.padding(horizontal = 24.cdp, vertical = 20.cdp)
+                            )
+                        }
                     }
                 }
             }
         }
+
+        CpnBottomPlayMusic()
+        PlayMusicSheet()
+        PlayListSheet()
     }
 }
 
