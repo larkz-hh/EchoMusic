@@ -1,12 +1,15 @@
 package xyz.larkzhh.echomusic.ui.page.search
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -66,6 +69,16 @@ fun SearchPage() {
                 }
             )
             if (!hasSearched) {
+                HistorySection(
+                    history = viewModel.history,
+                    onKeywordClick = { word ->
+                        keyword = word
+                        hasSearched = true
+                        viewModel.getSearch(word)
+                    },
+                    onRemove = { viewModel.removeHistory(it) },
+                    onClear = { viewModel.clearHistory() }
+                )
                 HotSearchSection(viewModel.hotWords) { word ->
                     keyword = word
                     hasSearched = true
@@ -213,6 +226,147 @@ private fun SearchTopBar(
         )
     }
 }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HistorySection(
+    history: List<String>,
+    onKeywordClick: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    onClear: () -> Unit
+) {
+    if (history.isEmpty()) {
+        return
+    }
+    var editing by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    var showClearDialog by remember { mutableStateOf(false) }
+    val visible = if (expanded || editing) history else history.take(COLLAPSED_HISTORY_COUNT)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.cdp, vertical = 10.cdp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "搜索历史",
+                color = AppColorsProvider.current.firstText,
+                fontSize = 28.csp,
+                fontWeight = FontWeight.Bold
+            )
+            Row {
+                Text(
+                    text = if (editing) "完成" else "编辑",
+                    color = AppColorsProvider.current.secondText,
+                    fontSize = 24.csp,
+                    modifier = Modifier
+                        .clickable {
+                            editing = !editing
+                            if (!editing) {
+                                expanded = false
+                            }
+                        }
+                        .padding(horizontal = 8.cdp, vertical = 4.cdp)
+                )
+                Text(
+                    text = "清空",
+                    color = AppColorsProvider.current.secondText,
+                    fontSize = 24.csp,
+                    modifier = Modifier
+                        .clickable { showClearDialog = true }
+                        .padding(horizontal = 8.cdp, vertical = 4.cdp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(16.cdp))
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.cdp),
+            verticalArrangement = Arrangement.spacedBy(12.cdp)
+        ) {
+            visible.forEach { word ->
+                HistoryChip(
+                    text = word,
+                    editing = editing,
+                    onClick = { if (!editing) onKeywordClick(word) },
+                    onRemove = { onRemove(word) }
+                )
+            }
+            if (!editing && history.size > COLLAPSED_HISTORY_COUNT) {
+                HistoryChip(
+                    text = if (expanded) "收起" else "展开",
+                    editing = false,
+                    onClick = { expanded = !expanded },
+                    onRemove = {}
+                )
+            }
+        }
+    }
+
+    if (showClearDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            title = { Text(text = "清空搜索历史") },
+            text = { Text(text = "确定清空全部搜索历史吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearDialog = false
+                    onClear()
+                }) {
+                    Text(text = "清空")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }) {
+                    Text(text = "取消")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun HistoryChip(
+    text: String,
+    editing: Boolean,
+    onClick: () -> Unit,
+    onRemove: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.cdp))
+            .background(AppColorsProvider.current.card)
+            .border(1.cdp, AppColorsProvider.current.divider, RoundedCornerShape(8.cdp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.cdp, vertical = 8.cdp)
+    ) {
+        Text(
+            text = text,
+            color = AppColorsProvider.current.firstText,
+            fontSize = 22.csp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (editing) {
+            Text(
+                text = "×",
+                color = AppColorsProvider.current.secondText,
+                fontSize = 24.csp,
+                modifier = Modifier
+                    .padding(start = 8.cdp)
+                    .clickable(onClick = onRemove)
+            )
+        }
+    }
+}
+
+private const val COLLAPSED_HISTORY_COUNT = 8
 
 @Composable
 private fun HotSearchSection(words: List<String>, onClick: (String) -> Unit) {
