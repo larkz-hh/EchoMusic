@@ -3,6 +3,7 @@ package xyz.larkzhh.echomusic.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import xyz.larkzhh.echomusic.core.SearchHistoryStorage
 import xyz.larkzhh.echomusic.core.viewstate.BaseViewStateViewModel
 import xyz.larkzhh.echomusic.core.viewstate.ViewStateMutableStateFlow
 import xyz.larkzhh.echomusic.http.NeteaseApi
@@ -25,6 +26,22 @@ class SearchViewModel @Inject constructor(
         private set
     var hotWords by mutableStateOf<List<String>>(emptyList())
         private set
+    var history by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    init {
+        history = SearchHistoryStorage.load()
+    }
+
+    fun removeHistory(keyword: String) {
+        SearchHistoryStorage.remove(keyword)
+        history = SearchHistoryStorage.load()
+    }
+
+    fun clearHistory() {
+        SearchHistoryStorage.clear()
+        history = emptyList()
+    }
 
     fun loadHotSearch() {
         launch(hotSearchState, handleSuccessBlock = { result ->
@@ -45,6 +62,8 @@ class SearchViewModel @Inject constructor(
         }
         launch(searchResultState, handleSuccessBlock = { result ->
             songs = result.result?.songs ?: emptyList()
+            SearchHistoryStorage.add(input)
+            history = SearchHistoryStorage.load()
         }) {
             api.getSearch(input)
         }
