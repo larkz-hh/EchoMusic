@@ -3,6 +3,7 @@ package xyz.larkzhh.echomusic.viewmodel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewModelScope
 import xyz.larkzhh.echomusic.core.SearchHistoryStorage
 import xyz.larkzhh.echomusic.core.viewstate.BaseViewStateViewModel
 import xyz.larkzhh.echomusic.core.viewstate.ViewStateMutableStateFlow
@@ -11,6 +12,9 @@ import xyz.larkzhh.echomusic.model.HotSearchResult
 import xyz.larkzhh.echomusic.model.SearchResult
 import xyz.larkzhh.echomusic.model.SearchSong
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -28,6 +32,10 @@ class SearchViewModel @Inject constructor(
         private set
     var history by mutableStateOf<List<String>>(emptyList())
         private set
+    var suggestions by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    private var suggestJob: Job? = null
 
     init {
         history = SearchHistoryStorage.load()
@@ -51,6 +59,26 @@ class SearchViewModel @Inject constructor(
                 .take(10)
         }) {
             api.getHotSearch()
+        }
+    }
+
+    fun suggest(input: String) {
+        suggestJob?.cancel()
+        if (input.isBlank()) {
+            suggestions = emptyList()
+            return
+        }
+        suggestJob = viewModelScope.launch {
+            delay(250)
+            runCatching { api.getSearchSuggest(input) }
+                .onSuccess { result ->
+                    suggestions = result.result?.allMatch.orEmpty()
+                        .map { it.keyword }
+                        .filter { it.isNotBlank() }
+                        .distinct()
+                        .take(10)
+                }
+                .onFailure { suggestions = emptyList() }
         }
     }
 

@@ -27,6 +27,7 @@ import retrofit2.http.GET
 import retrofit2.http.Query
 import java.util.Date
 import xyz.larkzhh.echomusic.model.HotSearchResult
+import xyz.larkzhh.echomusic.model.SearchSuggestResult
 import xyz.larkzhh.echomusic.model.TopListResult
 import xyz.larkzhh.echomusic.model.UserRecordResult
 
@@ -70,6 +71,12 @@ interface NeteaseApi {
 
     @GET("/search/hot/detail")
     suspend fun getHotSearch(): HotSearchResult
+
+    @GET("/search/suggest")
+    suspend fun getSearchSuggest(
+        @Query("keywords") keywords: String,
+        @Query("type") type: String = "mobile",
+    ): SearchSuggestResult
 
     @GET("/playlist/detail")
     suspend fun getPlaylistDetail(@Query("id") id: Long): PlaylistDetailResult

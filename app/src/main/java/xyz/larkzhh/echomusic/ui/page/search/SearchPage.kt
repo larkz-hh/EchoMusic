@@ -22,9 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.larkzhh.echomusic.R
@@ -60,7 +64,13 @@ fun SearchPage() {
         Column(modifier = Modifier.fillMaxSize().background(AppColorsProvider.current.background)) {
             SearchTopBar(
                 keyword = keyword,
-                onKeywordChange = { keyword = it },
+                onKeywordChange = {
+                    keyword = it
+                    if (it.isBlank()) {
+                        hasSearched = false
+                    }
+                    viewModel.suggest(it)
+                },
                 onSearchClick = {
                     if (keyword.isNotBlank()) {
                         hasSearched = true
@@ -68,7 +78,13 @@ fun SearchPage() {
                     }
                 }
             )
-            if (!hasSearched) {
+            if (!hasSearched && keyword.isNotBlank()) {
+                SuggestList(viewModel.suggestions, keyword) { word ->
+                    keyword = word
+                    hasSearched = true
+                    viewModel.getSearch(word)
+                }
+            } else if (!hasSearched) {
                 HistorySection(
                     history = viewModel.history,
                     onKeywordClick = { word ->
@@ -227,6 +243,51 @@ private fun SearchTopBar(
     }
 }
 
+@Composable
+private fun SuggestList(suggestions: List<String>, keyword: String, onClick: (String) -> Unit) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        itemsIndexed(suggestions) { _, word ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onClick(word) }
+                    .padding(horizontal = 24.cdp, vertical = 14.cdp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CommonIcon(
+                    resId = R.drawable.ic_search,
+                    modifier = Modifier.size(28.cdp),
+                    tint = AppColorsProvider.current.thirdIcon
+                )
+                Text(
+                    text = highlightKeyword(word, keyword),
+                    color = AppColorsProvider.current.firstText,
+                    fontSize = 26.csp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 16.cdp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun highlightKeyword(text: String, keyword: String): AnnotatedString {
+    val start = if (keyword.isBlank()) -1 else text.indexOf(keyword, ignoreCase = true)
+    return buildAnnotatedString {
+        if (start < 0) {
+            append(text)
+            return@buildAnnotatedString
+        }
+        append(text.substring(0, start))
+        withStyle(SpanStyle(color = AppColorsProvider.current.primary)) {
+            append(text.substring(start, start + keyword.length))
+        }
+        append(text.substring(start + keyword.length))
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HistorySection(
@@ -340,9 +401,9 @@ private fun HistoryChip(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .clip(RoundedCornerShape(8.cdp))
+            .clip(RoundedCornerShape(20.cdp))
             .background(AppColorsProvider.current.card)
-            .border(1.cdp, AppColorsProvider.current.divider, RoundedCornerShape(8.cdp))
+            .border(1.cdp, AppColorsProvider.current.divider, RoundedCornerShape(20.cdp))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.cdp, vertical = 8.cdp)
     ) {
