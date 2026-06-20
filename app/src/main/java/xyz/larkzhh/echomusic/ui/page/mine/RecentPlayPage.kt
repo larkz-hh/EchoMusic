@@ -1,6 +1,7 @@
 package xyz.larkzhh.echomusic.ui.page.mine
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +28,9 @@ import xyz.larkzhh.echomusic.model.SongBean
 import xyz.larkzhh.echomusic.model.UserRecordResult
 import xyz.larkzhh.echomusic.nav.EchoNavController
 import xyz.larkzhh.echomusic.ui.page.mine.component.CpnSongItem
+import xyz.larkzhh.echomusic.ui.page.playmusic.PlayListSheet
+import xyz.larkzhh.echomusic.ui.page.playmusic.PlayMusicSheet
+import xyz.larkzhh.echomusic.ui.page.playmusic.component.CpnBottomPlayMusic
 import xyz.larkzhh.echomusic.ui.theme.AppColorsProvider
 import xyz.larkzhh.echomusic.utils.cdp
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,37 +41,43 @@ import javax.inject.Inject
 fun RecentPlayPage() {
     val viewModel: RecentPlayViewModel = hiltViewModel()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppColorsProvider.current.background)
-            .statusBarsPadding()
-    ) {
-        CommonTopAppBar(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(88.cdp),
-            title = "最近播放",
-            titleAlign = TextAlign.Left,
-            leftClick = { EchoNavController.instance.popBackStack() },
-        )
-
-        ViewStateComponent(
-            modifier = Modifier.fillMaxSize(),
-            viewStateFlow = viewModel.recordResult,
-            loadDataBlock = { viewModel.load() },
+                .fillMaxSize()
+                .background(AppColorsProvider.current.background)
+                .statusBarsPadding()
         ) {
-            val songs = viewModel.songs
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                itemsIndexed(songs) { index, song ->
-                    CpnSongItem(index, song) {
-                        MusicPlayController.setDataSource(songs, index)
-                        MusicPlayController.showCpnBottomMusicPlay = false
-                        MusicPlayController.showPlayMusicSheet = true
+            CommonTopAppBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(88.cdp),
+                title = "最近播放",
+                titleAlign = TextAlign.Left,
+                leftClick = { EchoNavController.instance.popBackStack() },
+            )
+
+            ViewStateComponent(
+                modifier = Modifier.fillMaxSize(),
+                viewStateFlow = viewModel.recordResult,
+                loadDataBlock = { viewModel.load() },
+            ) {
+                val songs = viewModel.songs
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    itemsIndexed(songs) { index, song ->
+                        CpnSongItem(index, song) {
+                            MusicPlayController.setDataSource(songs, index)
+                            MusicPlayController.showCpnBottomMusicPlay = false
+                            MusicPlayController.showPlayMusicSheet = true
+                        }
                     }
                 }
             }
         }
+
+        CpnBottomPlayMusic()
+        PlayMusicSheet()
+        PlayListSheet()
     }
 }
 
@@ -87,11 +97,11 @@ class RecentPlayViewModel @Inject constructor(private val api: NeteaseApi) : Bas
             return
         }
         launch(recordResult, handleSuccessBlock = { result ->
-            // 优先最近一周
-            val items = if (result.weekData.isNotEmpty()) result.weekData else result.allData
+            val items = if (result.allData.isNotEmpty()) result.allData else result.weekData
             songs = items.mapNotNull { it.song }
         }) {
-            api.getUserRecord(uid = uid, type = 1)
+            // type=0 全部时间，type=1 只有最近一周
+            api.getUserRecord(uid = uid, type = 0)
         }
     }
 }
