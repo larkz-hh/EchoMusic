@@ -26,6 +26,8 @@ import java.util.ArrayList
 
 object EchoPlayer : IPlayer {
 
+    private const val PLAY_REPORT_THRESHOLD = 30_000L
+
     private var mStatus: PlayerStatus = PlayerStatus.IDLE
     var mCurSongBean: SongBean? = null
 
@@ -36,6 +38,8 @@ object EchoPlayer : IPlayer {
 
     private val playerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val echoApi = EntryPointFinder.getEchoApi()
+
+    private var mReportedSongId: Long? = null
 
     private fun player(): ExoPlayer = mPlayer ?: buildPlayer().also { mPlayer = it }
 
@@ -131,6 +135,7 @@ object EchoPlayer : IPlayer {
 
     @OptIn(UnstableApi::class)
     private fun playUrl(url: String, songId: Long) {
+        mReportedSongId = null
         val dataSourceFactory = CacheDataSource.Factory()
             .setCache(MediaCache.audio(EchoApplication.context))
             .setUpstreamDataSourceFactory(
@@ -207,9 +212,22 @@ object EchoPlayer : IPlayer {
             return
         }
         val position = exoPlayer.currentPosition
+        reportPlay(position)
         val percentage = (position * 100f / duration + 0.5f).toInt()
         mListeners.forEach {
             it.onProgress(duration.toInt(), position.toInt(), percentage)
+        }
+    }
+
+    /** 播满 30 秒上报一次，计入某抑云最近播放 */
+    private fun reportPlay(position: Long) {
+        val song = mCurSongBean ?: return
+        if (position < PLAY_REPORT_THRESHOLD || mReportedSongId == song.id) {
+            return
+        }
+        mReportedSongId = song.id
+        playerScope.launch {
+            runCatching { echoApi.scrobble(song.id, song.al.id, position / 1000) }
         }
     }
 }

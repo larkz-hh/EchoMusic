@@ -26,6 +26,7 @@ import xyz.larkzhh.echomusic.model.VideoUrlsResult
 import retrofit2.http.GET
 import retrofit2.http.Query
 import java.util.Date
+import xyz.larkzhh.echomusic.model.BaseResult
 import xyz.larkzhh.echomusic.model.HotSearchResult
 import xyz.larkzhh.echomusic.model.SearchSuggestResult
 import xyz.larkzhh.echomusic.model.TopListResult
@@ -77,6 +78,14 @@ interface NeteaseApi {
         @Query("keywords") keywords: String,
         @Query("type") type: String = "mobile",
     ): SearchSuggestResult
+
+    // 播放上报，计入最近播放
+    @GET("/scrobble")
+    suspend fun scrobble(
+        @Query("id") id: Long,
+        @Query("sourceid") sourceId: Long = 0,
+        @Query("time") time: Long,
+    ): BaseResult
 
     @GET("/playlist/detail")
     suspend fun getPlaylistDetail(@Query("id") id: Long): PlaylistDetailResult
