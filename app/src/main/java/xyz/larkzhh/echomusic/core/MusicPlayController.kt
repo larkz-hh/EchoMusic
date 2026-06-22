@@ -93,6 +93,7 @@ object MusicPlayController : IPlayerListener {
     private fun innerPlay(songBean: SongBean) {
         EchoPlayer.setDataSource(songBean)
         EchoPlayer.start()
+        RecentPlayStorage.add(songBean)
         EventBus.getDefault().post(ChangeSongEvent(songBean))
     }
 
