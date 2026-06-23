@@ -43,6 +43,7 @@ fun CpnMusicApplication() {
                     .clickable {
                         when (item.name) {
                             "最近播放" -> EchoNavController.instance.navigate(RouterUrls.RECENT_PLAY)
+                            "本地/下载" -> EchoNavController.instance.navigate(RouterUrls.LOCAL_MUSIC)
                         }
                     }
             ) {

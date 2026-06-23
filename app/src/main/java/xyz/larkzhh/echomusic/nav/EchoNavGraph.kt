@@ -14,6 +14,7 @@ import xyz.larkzhh.echomusic.ui.page.cloudcountry.PlayVideoPage
 import xyz.larkzhh.echomusic.ui.page.home.HomePage
 import xyz.larkzhh.echomusic.ui.page.mine.PlaylistPage
 import xyz.larkzhh.echomusic.ui.page.mine.RecentPlayPage
+import xyz.larkzhh.echomusic.ui.page.local.LocalMusicPage
 import xyz.larkzhh.echomusic.ui.page.profile.ProfilePage
 import xyz.larkzhh.echomusic.ui.page.splash.SplashPage
 import androidx.navigation.compose.NavHost
@@ -57,6 +58,9 @@ fun EchoNavGraph(
         }
         composable(RouterUrls.RECENT_PLAY) {
             RecentPlayPage()
+        }
+        composable(RouterUrls.LOCAL_MUSIC) {
+            LocalMusicPage()
         }
         composable(
             RouterUrls.PROFILE,
