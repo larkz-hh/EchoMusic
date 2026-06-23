@@ -9,6 +9,7 @@ object RouterUrls {
     const val SEARCH = "search"
     const val PLAY_LIST = "playList"
     const val RECENT_PLAY = "recentPlay"
+    const val LOCAL_MUSIC = "localMusic"
     const val SONG_COMMENT = "songComment"
     const val PLAY_VIDEO = "playVideo"
     const val WEB = "web"

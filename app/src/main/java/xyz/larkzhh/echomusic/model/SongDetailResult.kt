@@ -14,6 +14,8 @@ data class SongBean(
     val name: String,
     val al: Al,
     val ar: List<Ar>,
+    // 本地音乐的内容 uri，非空表示本地歌曲
+    val localUri: String? = null,
 )
 
 @Keep

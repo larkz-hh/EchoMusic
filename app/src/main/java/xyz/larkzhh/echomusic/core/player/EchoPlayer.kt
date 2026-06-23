@@ -8,6 +8,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
@@ -105,7 +106,12 @@ object EchoPlayer : IPlayer {
         }
         mCurSongBean?.let {
             MusicPlayService.start()
-            getSongUrlAndPlay(it.id)
+            val localUri = it.localUri
+            if (localUri != null) {
+                playUrl(localUri, it.id, useCache = false)
+            } else {
+                getSongUrlAndPlay(it.id)
+            }
         }
     }
 
@@ -134,15 +140,19 @@ object EchoPlayer : IPlayer {
     }
 
     @OptIn(UnstableApi::class)
-    private fun playUrl(url: String, songId: Long) {
+    private fun playUrl(url: String, songId: Long, useCache: Boolean = true) {
         mReportedSongId = null
-        val dataSourceFactory = CacheDataSource.Factory()
-            .setCache(MediaCache.audio(EchoApplication.context))
-            .setUpstreamDataSourceFactory(
-                DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
-            )
-            .setCacheKeyFactory { "${UserSpace.id}:$songId" }
-            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        val httpFactory = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
+        val dataSourceFactory = if (useCache) {
+            CacheDataSource.Factory()
+                .setCache(MediaCache.audio(EchoApplication.context))
+                .setUpstreamDataSourceFactory(httpFactory)
+                .setCacheKeyFactory { "${UserSpace.id}:$songId" }
+                .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        } else {
+            // 本地文件走 content://，不需要缓存
+            DefaultDataSource.Factory(EchoApplication.context, httpFactory)
+        }
 
         val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
             .createMediaSource(MediaItem.fromUri(url))
@@ -222,6 +232,9 @@ object EchoPlayer : IPlayer {
     /** 播满 30 秒上报一次，计入网易云最近播放 */
     private fun reportPlay(position: Long) {
         val song = mCurSongBean ?: return
+        if (song.localUri != null) {
+            return
+        }
         if (position < PLAY_REPORT_THRESHOLD || mReportedSongId == song.id) {
             return
         }
