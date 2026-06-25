@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,7 +17,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.gson.Gson
+import xyz.larkzhh.echomusic.core.AppGlobalData
+import xyz.larkzhh.echomusic.core.LikeStore
 import xyz.larkzhh.echomusic.core.MusicPlayController
+import xyz.larkzhh.echomusic.hilt.entrypoint.EntryPointFinder
 import xyz.larkzhh.echomusic.nav.RouterUrls
 import xyz.larkzhh.echomusic.core.player.PlayMode
 import xyz.larkzhh.echomusic.compose.CommonIcon
@@ -25,8 +29,11 @@ import xyz.larkzhh.echomusic.ui.page.playmusic.showPlayListSheet
 import xyz.larkzhh.echomusic.utils.StringUtil
 import xyz.larkzhh.echomusic.utils.cdp
 import xyz.larkzhh.echomusic.utils.onClick
+import xyz.larkzhh.echomusic.utils.showToast
 import xyz.larkzhh.echomusic.viewmodel.PlayMusicViewModel
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import retrofit2.HttpException
 import xyz.larkzhh.echomusic.R
 import xyz.larkzhh.echomusic.nav.EchoNavController
 import xyz.larkzhh.echomusic.utils.csp
@@ -41,17 +48,43 @@ fun CpnPlayMusicActionLayout() {
 @Composable
 private fun MiddleActionLayout() {
     val viewModel: PlayMusicViewModel = hiltViewModel()
+    val scope = rememberCoroutineScope()
+    val api = remember { EntryPointFinder.getEchoApi() }
+    val currentSong = MusicPlayController.realSongList.getOrNull(MusicPlayController.curRealIndex)
+
     LaunchedEffect(MusicPlayController.curRealIndex) {
         viewModel.getSongComment(MusicPlayController.realSongList[MusicPlayController.curRealIndex])
         viewModel.getLyric(MusicPlayController.realSongList[MusicPlayController.curRealIndex])
+        LikeStore.load(api, AppGlobalData.currentUid)
     }
+
     Row(
         modifier = Modifier
             .padding(start = 60.cdp, end = 60.cdp, bottom = 32.cdp)
             .fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        MiddleActionIcon(R.drawable.ic_like_no, modifier = Modifier.padding(end = 60.cdp))
+        val songId = currentSong?.id ?: 0L
+        MiddleActionIcon(
+            resId = R.drawable.ic_like_no,
+            tint = if (LikeStore.isLiked(songId)) Color(0xFFFF4D4F) else Color.White,
+            modifier = Modifier.padding(end = 60.cdp)
+        ) {
+            if (songId == 0L) {
+                return@MiddleActionIcon
+            }
+            val target = !LikeStore.isLiked(songId)
+            LikeStore.setLiked(songId, target)
+            scope.launch {
+                val result = runCatching { api.like(songId, target) }
+                if (result.isSuccess) {
+                    showToast(if (target) "已喜欢" else "已取消喜欢")
+                } else {
+                    LikeStore.setLiked(songId, !target)
+                    showToast(errorMessage(result.exceptionOrNull()) ?: "操作失败，请检查登录状态")
+                }
+            }
+        }
         MiddleActionIcon(R.drawable.ic_download, modifier = Modifier.padding(end = 60.cdp))
         MiddleActionIcon(R.drawable.ic_action_sing, modifier = Modifier.padding(end = 60.cdp))
         Box(modifier = Modifier.width(138.cdp)) {
@@ -80,11 +113,12 @@ private fun MiddleActionLayout() {
 private fun MiddleActionIcon(
     resId: Int,
     modifier: Modifier = Modifier,
+    tint: Color = Color.White,
     clickable: () -> Unit = {}
 ) {
     CommonIcon(
         resId,
-        tint = Color.White,
+        tint = tint,
         modifier = modifier
             .size(78.cdp)
             .clip(CircleShape)
@@ -93,6 +127,11 @@ private fun MiddleActionIcon(
             }
             .padding(16.cdp)
     )
+}
+
+private fun errorMessage(error: Throwable?): String? {
+    val body = (error as? HttpException)?.response()?.errorBody()?.string() ?: return null
+    return runCatching { JSONObject(body).optString("message") }.getOrNull()?.takeIf { it.isNotBlank() }
 }
 
 @Composable
