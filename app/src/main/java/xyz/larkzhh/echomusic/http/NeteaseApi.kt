@@ -28,6 +28,7 @@ import retrofit2.http.Query
 import java.util.Date
 import xyz.larkzhh.echomusic.model.BaseResult
 import xyz.larkzhh.echomusic.model.HotSearchResult
+import xyz.larkzhh.echomusic.model.LikeListResult
 import xyz.larkzhh.echomusic.model.SearchSuggestResult
 import xyz.larkzhh.echomusic.model.TopListResult
 import xyz.larkzhh.echomusic.model.UserRecordResult
@@ -86,6 +87,15 @@ interface NeteaseApi {
         @Query("sourceid") sourceId: Long = 0,
         @Query("time") time: Long,
     ): BaseResult
+
+    @GET("/like")
+    suspend fun like(
+        @Query("id") id: Long,
+        @Query("like") like: Boolean,
+    ): BaseResult
+
+    @GET("/likelist")
+    suspend fun getLikeList(@Query("uid") uid: String): LikeListResult
 
     @GET("/playlist/detail")
     suspend fun getPlaylistDetail(@Query("id") id: Long): PlaylistDetailResult
