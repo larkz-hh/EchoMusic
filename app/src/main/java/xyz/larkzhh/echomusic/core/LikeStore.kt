@@ -19,6 +19,11 @@ object LikeStore {
         likedIds = if (liked) likedIds + id else likedIds - id
     }
 
+    fun setAll(ids: Set<Long>) {
+        likedIds = ids
+        loaded = true
+    }
+
     suspend fun load(api: NeteaseApi, uid: String?) {
         if (loaded || uid == null) {
             return

@@ -12,6 +12,7 @@ import com.google.gson.Gson
 import xyz.larkzhh.echomusic.model.PlaylistBean
 import xyz.larkzhh.echomusic.ui.page.cloudcountry.PlayVideoPage
 import xyz.larkzhh.echomusic.ui.page.home.HomePage
+import xyz.larkzhh.echomusic.ui.page.mine.LikedMusicPage
 import xyz.larkzhh.echomusic.ui.page.mine.PlaylistPage
 import xyz.larkzhh.echomusic.ui.page.mine.RecentPlayPage
 import xyz.larkzhh.echomusic.ui.page.local.LocalMusicPage
@@ -61,6 +62,9 @@ fun EchoNavGraph(
         }
         composable(RouterUrls.LOCAL_MUSIC) {
             LocalMusicPage()
+        }
+        composable(RouterUrls.LIKED_MUSIC) {
+            LikedMusicPage()
         }
         composable(
             RouterUrls.PROFILE,
