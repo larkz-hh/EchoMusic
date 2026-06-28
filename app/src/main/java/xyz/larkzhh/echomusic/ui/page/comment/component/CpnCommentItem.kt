@@ -8,11 +8,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import kotlinx.coroutines.launch
 import xyz.larkzhh.echomusic.R
+import xyz.larkzhh.echomusic.core.CommentLiker
 import xyz.larkzhh.echomusic.model.CommentBean
 import xyz.larkzhh.echomusic.compose.CommonIcon
 import xyz.larkzhh.echomusic.compose.CommonNetworkImage
@@ -20,12 +29,18 @@ import xyz.larkzhh.echomusic.ui.theme.AppColorsProvider
 import xyz.larkzhh.echomusic.utils.TimeUtil
 import xyz.larkzhh.echomusic.utils.cdp
 import xyz.larkzhh.echomusic.utils.csp
+import xyz.larkzhh.echomusic.utils.showToast
 
 
 @Composable
 fun CpnCommentItem(comment: CommentBean,
                    isFloorComment: Boolean = false,
+                   resourceId: String? = null,
+                   commentType: Int = 0,
                    onFloorCommentClick: ((comment: CommentBean) -> Unit)? = null) {
+    var liked by remember(comment.commentId) { mutableStateOf(comment.liked) }
+    var likedCount by remember(comment.commentId) { mutableIntStateOf(comment.likedCount) }
+    val scope = rememberCoroutineScope()
     ConstraintLayout(
         modifier = Modifier
             .fillMaxWidth()
@@ -68,8 +83,25 @@ fun CpnCommentItem(comment: CommentBean,
         )
 
         CommonIcon(resId = R.drawable.ic_like_no,
-            tint = AppColorsProvider.current.thirdIcon,
+            tint = if (liked) Color(0xFFFF4D4F) else AppColorsProvider.current.thirdIcon,
             modifier = Modifier.size(32.cdp)
+                .clickable(enabled = resourceId != null) {
+                    val target = !liked
+                    liked = target
+                    likedCount = (likedCount + if (target) 1 else -1).coerceAtLeast(0)
+                    comment.liked = liked
+                    comment.likedCount = likedCount
+                    scope.launch {
+                        val success = CommentLiker.like(resourceId!!, commentType, comment.commentId, target)
+                        if (!success) {
+                            liked = !target
+                            likedCount = (likedCount + if (target) -1 else 1).coerceAtLeast(0)
+                            comment.liked = liked
+                            comment.likedCount = likedCount
+                            showToast("操作失败")
+                        }
+                    }
+                }
                 .constrainAs(icFabulous) {
                     end.linkTo(parent.end)
                     top.linkTo(ivAvatar.top)
@@ -77,7 +109,7 @@ fun CpnCommentItem(comment: CommentBean,
                 })
 
         Text(
-            text = comment.likedCount.toString(),
+            text = likedCount.toString(),
             fontSize = 28.csp,
             color = AppColorsProvider.current.thirdText,
             modifier = Modifier
