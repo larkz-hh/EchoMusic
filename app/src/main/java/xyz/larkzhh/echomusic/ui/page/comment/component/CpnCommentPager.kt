@@ -45,7 +45,11 @@ fun CpnCommentPager(id: String, sortType: Int, type: Int) {
             key = commentBeanList.itemKey { it.commentId }
         ) { index ->
             commentBeanList[index]?.let { commentBean ->
-                CpnCommentItem(comment = commentBean) { clicked ->
+                CpnCommentItem(
+                    comment = commentBean,
+                    resourceId = id,
+                    commentType = type
+                ) { clicked ->
                     FloorCommentViewModel.floorOwnerCommentId = clicked.commentId
                     FloorCommentViewModel.showFloorCommentSheet = true
                 }

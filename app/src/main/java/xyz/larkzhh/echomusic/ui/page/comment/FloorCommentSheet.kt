@@ -98,7 +98,12 @@ private fun FloorCommentList(type: Int, onBack: () -> Unit) {
             viewModel.floorOwnerCommentBean?.let {
                 item {
                     Column {
-                        CpnCommentItem(comment = it, isFloorComment = true)
+                        CpnCommentItem(
+                            comment = it,
+                            isFloorComment = true,
+                            resourceId = FloorCommentViewModel.resourceId,
+                            commentType = type
+                        )
                         Divider(
                             color = AppColorsProvider.current.divider.copy(0.6f),
                             modifier = Modifier.fillMaxWidth(),
@@ -113,7 +118,12 @@ private fun FloorCommentList(type: Int, onBack: () -> Unit) {
             ) { index ->
                 val item = commentBeanList[index]
                 item?.let {
-                    CpnCommentItem(comment = it, isFloorComment = true)
+                    CpnCommentItem(
+                        comment = it,
+                        isFloorComment = true,
+                        resourceId = FloorCommentViewModel.resourceId,
+                        commentType = type
+                    )
                 }
             }
         }

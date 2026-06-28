@@ -97,6 +97,14 @@ interface NeteaseApi {
     @GET("/likelist")
     suspend fun getLikeList(@Query("uid") uid: String): LikeListResult
 
+    @GET("/comment/like")
+    suspend fun likeComment(
+        @Query("id") id: String,
+        @Query("cid") commentId: Long,
+        @Query("t") like: Int,
+        @Query("type") type: Int,
+    ): BaseResult
+
     @GET("/playlist/detail")
     suspend fun getPlaylistDetail(@Query("id") id: Long): PlaylistDetailResult
 
