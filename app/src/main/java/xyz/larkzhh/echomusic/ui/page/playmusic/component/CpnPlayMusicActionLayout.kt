@@ -51,11 +51,15 @@ private fun MiddleActionLayout() {
     val scope = rememberCoroutineScope()
     val api = remember { EntryPointFinder.getEchoApi() }
     val currentSong = MusicPlayController.realSongList.getOrNull(MusicPlayController.curRealIndex)
+    val isLocal = currentSong?.localUri != null
 
     LaunchedEffect(MusicPlayController.curRealIndex) {
-        viewModel.getSongComment(MusicPlayController.realSongList[MusicPlayController.curRealIndex])
-        viewModel.getLyric(MusicPlayController.realSongList[MusicPlayController.curRealIndex])
-        LikeStore.load(api, AppGlobalData.currentUid)
+        // 本地歌曲没有某抑云 id，跳过评论和歌词
+        if (!isLocal) {
+            viewModel.getSongComment(MusicPlayController.realSongList[MusicPlayController.curRealIndex])
+            viewModel.getLyric(MusicPlayController.realSongList[MusicPlayController.curRealIndex])
+            LikeStore.load(api, AppGlobalData.currentUid)
+        }
     }
 
     Row(
@@ -70,6 +74,10 @@ private fun MiddleActionLayout() {
             tint = if (LikeStore.isLiked(songId)) Color(0xFFFF4D4F) else Color.White,
             modifier = Modifier.padding(end = 60.cdp)
         ) {
+            if (isLocal) {
+                showToast("本地音乐不支持点赞")
+                return@MiddleActionIcon
+            }
             if (songId == 0L) {
                 return@MiddleActionIcon
             }
@@ -89,20 +97,26 @@ private fun MiddleActionLayout() {
         MiddleActionIcon(R.drawable.ic_action_sing, modifier = Modifier.padding(end = 60.cdp))
         Box(modifier = Modifier.width(138.cdp)) {
             MiddleActionIcon(R.drawable.ic_comment_count) {
+                if (isLocal) {
+                    showToast("本地音乐没有评论")
+                    return@MiddleActionIcon
+                }
                 val json =
                     Uri.encode(Gson().toJson(MusicPlayController.realSongList[MusicPlayController.curRealIndex]))
                 EchoNavController.instance.navigate("${RouterUrls.SONG_COMMENT}/$json")
             }
-            viewModel.songCommentResult?.let {
-                val commentText = StringUtil.friendlyNumber(it.total)
-                Text(
-                    text = commentText,
-                    color = Color.White,
-                    fontSize = 18.csp,
-                    modifier = Modifier
-                        .padding(top = 6.cdp, start = 48.cdp)
-                        .align(Alignment.TopStart)
-                )
+            if (!isLocal) {
+                viewModel.songCommentResult?.let {
+                    val commentText = StringUtil.friendlyNumber(it.total)
+                    Text(
+                        text = commentText,
+                        color = Color.White,
+                        fontSize = 18.csp,
+                        modifier = Modifier
+                            .padding(top = 6.cdp, start = 48.cdp)
+                            .align(Alignment.TopStart)
+                    )
+                }
             }
         }
         MiddleActionIcon(R.drawable.ic_song_more)
