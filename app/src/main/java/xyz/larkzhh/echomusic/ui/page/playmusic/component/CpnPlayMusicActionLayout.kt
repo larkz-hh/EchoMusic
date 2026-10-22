@@ -5,20 +5,28 @@ import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.gson.Gson
 import xyz.larkzhh.echomusic.core.AppGlobalData
 import xyz.larkzhh.echomusic.core.LikeStore
+import xyz.larkzhh.echomusic.core.audio.EqController
+import xyz.larkzhh.echomusic.core.audio.EqPreset
 import xyz.larkzhh.echomusic.core.MusicPlayController
 import xyz.larkzhh.echomusic.hilt.entrypoint.EntryPointFinder
 import xyz.larkzhh.echomusic.nav.RouterUrls
@@ -26,6 +34,7 @@ import xyz.larkzhh.echomusic.core.player.PlayMode
 import xyz.larkzhh.echomusic.compose.CommonIcon
 import xyz.larkzhh.echomusic.compose.SeekBar
 import xyz.larkzhh.echomusic.ui.page.playmusic.showPlayListSheet
+import xyz.larkzhh.echomusic.ui.theme.AppColorsProvider
 import xyz.larkzhh.echomusic.utils.StringUtil
 import xyz.larkzhh.echomusic.utils.cdp
 import xyz.larkzhh.echomusic.utils.onClick
@@ -52,6 +61,7 @@ private fun MiddleActionLayout() {
     val api = remember { EntryPointFinder.getEchoApi() }
     val currentSong = MusicPlayController.realSongList.getOrNull(MusicPlayController.curRealIndex)
     val isLocal = currentSong?.localUri != null
+    var showEqSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(MusicPlayController.curRealIndex) {
         // 本地歌曲没有某抑云 id，跳过评论和歌词
@@ -119,7 +129,60 @@ private fun MiddleActionLayout() {
                 }
             }
         }
-        MiddleActionIcon(R.drawable.ic_song_more)
+        MiddleActionIcon(R.drawable.ic_song_more) {
+            showEqSheet = true
+        }
+    }
+
+    if (showEqSheet) {
+        EqSheet(onDismiss = { showEqSheet = false })
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EqSheet(onDismiss: () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = AppColorsProvider.current.card
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 32.cdp, vertical = 16.cdp)) {
+            Text(
+                text = "音效",
+                fontSize = 30.csp,
+                fontWeight = FontWeight.Bold,
+                color = AppColorsProvider.current.firstText
+            )
+            EqPreset.values().forEach { preset ->
+                val selected = EqController.preset == preset
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            EqController.apply(preset)
+                            onDismiss()
+                        }
+                        .padding(vertical = 18.cdp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = preset.title,
+                        fontSize = 28.csp,
+                        color = if (selected) AppColorsProvider.current.primary
+                        else AppColorsProvider.current.firstText,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (selected) {
+                        Text(
+                            text = "使用中",
+                            fontSize = 22.csp,
+                            color = AppColorsProvider.current.primary
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(24.cdp))
+        }
     }
 }
 

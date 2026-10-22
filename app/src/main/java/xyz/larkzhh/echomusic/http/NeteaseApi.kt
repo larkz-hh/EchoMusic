@@ -122,7 +122,8 @@ interface NeteaseApi {
     @GET("/song/url")
     suspend fun getSongUrl(
         @Query("id") id: Long,
-        @Query("br") br: Int = 128000
+        // 服务端按账号权限自动回退
+        @Query("br") br: Int = 999000
     ): SongUrlBean
 
     @GET("/comment/music")

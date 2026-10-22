@@ -1,5 +1,6 @@
 package xyz.larkzhh.echomusic.core.player
 
+import android.content.Context
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -12,9 +13,13 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import xyz.larkzhh.echomusic.EchoApplication
 import xyz.larkzhh.echomusic.core.UserSpace
+import xyz.larkzhh.echomusic.core.audio.NativeEqAudioProcessor
 import xyz.larkzhh.echomusic.core.player.event.PauseSongEvent
 import xyz.larkzhh.echomusic.core.player.event.PlaySongEvent
 import xyz.larkzhh.echomusic.hilt.entrypoint.EntryPointFinder
@@ -44,12 +49,31 @@ object EchoPlayer : IPlayer {
 
     private fun player(): ExoPlayer = mPlayer ?: buildPlayer().also { mPlayer = it }
 
+    @OptIn(UnstableApi::class)
+    private fun eqRenderersFactory(): DefaultRenderersFactory {
+        return object : DefaultRenderersFactory(EchoApplication.context) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): AudioSink {
+                return DefaultAudioSink.Builder(context)
+                    .setAudioProcessorChain(
+                        DefaultAudioSink.DefaultAudioProcessorChain(NativeEqAudioProcessor())
+                    )
+                    .setEnableFloatOutput(enableFloatOutput)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .build()
+            }
+        }
+    }
+
     private fun buildPlayer(): ExoPlayer {
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
-        return ExoPlayer.Builder(EchoApplication.context)
+        return ExoPlayer.Builder(EchoApplication.context, eqRenderersFactory())
             .setAudioAttributes(audioAttributes, true)
             .build().apply {
             addListener(object : Player.Listener {
