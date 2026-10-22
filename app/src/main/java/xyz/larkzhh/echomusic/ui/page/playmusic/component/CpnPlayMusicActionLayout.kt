@@ -139,53 +139,6 @@ private fun MiddleActionLayout() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun EqSheet(onDismiss: () -> Unit) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = AppColorsProvider.current.card
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 32.cdp, vertical = 16.cdp)) {
-            Text(
-                text = "音效",
-                fontSize = 30.csp,
-                fontWeight = FontWeight.Bold,
-                color = AppColorsProvider.current.firstText
-            )
-            EqPreset.values().forEach { preset ->
-                val selected = EqController.preset == preset
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            EqController.apply(preset)
-                            onDismiss()
-                        }
-                        .padding(vertical = 18.cdp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = preset.title,
-                        fontSize = 28.csp,
-                        color = if (selected) AppColorsProvider.current.primary
-                        else AppColorsProvider.current.firstText,
-                        modifier = Modifier.weight(1f)
-                    )
-                    if (selected) {
-                        Text(
-                            text = "使用中",
-                            fontSize = 22.csp,
-                            color = AppColorsProvider.current.primary
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(24.cdp))
-        }
-    }
-}
-
 @Composable
 private fun MiddleActionIcon(
     resId: Int,
