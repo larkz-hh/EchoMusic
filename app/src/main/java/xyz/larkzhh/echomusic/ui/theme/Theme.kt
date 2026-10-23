@@ -6,6 +6,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.shapes
 import androidx.compose.runtime.*
+import com.tencent.mmkv.MMKV
 import xyz.larkzhh.echomusic.ui.theme.color.AppColors
 import xyz.larkzhh.echomusic.ui.theme.color.palette.dark.DarkColorPalette
 import xyz.larkzhh.echomusic.ui.theme.color.palette.light.*
@@ -32,6 +33,14 @@ val themeTypeState: MutableState<Int> by lazy(mode = LazyThreadSafetyMode.SYNCHR
     mutableStateOf(getDefaultThemeId())
 }
 
+/**
+ * 切换主题并持久化
+ */
+fun setThemeType(themeType: Int) {
+    themeTypeState.value = themeType
+    MMKV.defaultMMKV().encode(THEME_KEY, themeType)
+}
+
 var AppColorsProvider = compositionLocalOf {
     DefaultColorPalette
 }
@@ -39,7 +48,13 @@ var AppColorsProvider = compositionLocalOf {
 /**
  * 获取当前默认主题
  */
-fun getDefaultThemeId(): Int = THEME_DEFAULT
+fun getDefaultThemeId(): Int {
+    return runCatching {
+        MMKV.defaultMMKV().decodeInt(THEME_KEY, THEME_DEFAULT)
+    }.getOrDefault(THEME_DEFAULT)
+}
+
+private const val THEME_KEY = "theme_type"
 
 const val TWEEN_DURATION = 200
 
