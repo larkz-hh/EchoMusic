@@ -23,6 +23,8 @@ class NativeEqAudioProcessor : BaseAudioProcessor() {
             inputBuffer.asShortBuffer().get(samples)
             NativeEq.process(samples, samples.size)
             output.asShortBuffer().put(samples)
+            // asShortBuffer 的写入不会推进原 buffer 的 position，必须手动设置
+            output.position(size)
         } else {
             output.put(inputBuffer)
         }
