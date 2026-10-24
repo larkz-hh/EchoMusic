@@ -176,14 +176,14 @@ private fun HeadPlayListInfo(modifier: Modifier, playlistBean: PlaylistBean) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 CommonNetworkImage(
-                    url = AppGlobalData.sLoginResult!!.profile.avatarUrl,
+                    url = playlistBean.creator.avatarUrl,
                     placeholder = R.drawable.ic_default_avator,
                     error = R.drawable.ic_default_avator,
                     modifier = Modifier.size(50.cdp)
                         .clip(RoundedCornerShape(50))
                 )
                 Text(
-                    text = AppGlobalData.sLoginResult!!.profile.nickname,
+                    text = playlistBean.creator.nickname,
                     fontSize = 28.csp,
                     fontWeight = FontWeight.Medium,
                     color = Color.White,

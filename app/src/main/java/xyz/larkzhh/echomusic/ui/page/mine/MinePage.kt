@@ -445,6 +445,7 @@ private fun TopBar(topBarAlphaState: MutableState<Float>, drawerState: androidx.
         enter = fadeIn() + slideInVertically(initialOffsetY = { fullHeight -> -fullHeight }),
         exit = ExitTransition.None
     ) {
+        val loginResult = AppGlobalData.sLoginResult
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -452,22 +453,24 @@ private fun TopBar(topBarAlphaState: MutableState<Float>, drawerState: androidx.
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            CommonNetworkImage(
-                url = AppGlobalData.sLoginResult!!.profile.avatarUrl,
-                placeholder = R.drawable.ic_default_avator,
-                error = R.drawable.ic_default_avator,
-                modifier = Modifier.size(50.cdp)
-                    .clip(
-                        RoundedCornerShape(50)
-                    )
-            )
-            Text(
-                text = AppGlobalData.sLoginResult!!.profile.nickname,
-                fontSize = 32.csp,
-                fontWeight = FontWeight.Medium,
-                color = AppColorsProvider.current.firstText,
-                modifier = Modifier.padding(start = 20.cdp)
-            )
+            if (loginResult != null) {
+                CommonNetworkImage(
+                    url = loginResult.profile.avatarUrl,
+                    placeholder = R.drawable.ic_default_avator,
+                    error = R.drawable.ic_default_avator,
+                    modifier = Modifier.size(50.cdp)
+                        .clip(
+                            RoundedCornerShape(50)
+                        )
+                )
+                Text(
+                    text = loginResult.profile.nickname,
+                    fontSize = 32.csp,
+                    fontWeight = FontWeight.Medium,
+                    color = AppColorsProvider.current.firstText,
+                    modifier = Modifier.padding(start = 20.cdp)
+                )
+            }
         }
     }
 }
