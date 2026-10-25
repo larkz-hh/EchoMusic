@@ -9,6 +9,8 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
+val useLocalApi = (project.findProperty("localApi") as String?)?.toBoolean() ?: false
+
 android {
     namespace = "xyz.larkzhh.echomusic"
     ndkVersion = "28.2.13676358"
@@ -30,6 +32,8 @@ android {
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
         }
+
+        buildConfigField("boolean", "USE_LOCAL_API", useLocalApi.toString())
     }
 
     externalNativeBuild {
@@ -58,6 +62,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
