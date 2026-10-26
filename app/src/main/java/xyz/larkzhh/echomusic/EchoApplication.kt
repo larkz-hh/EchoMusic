@@ -22,6 +22,7 @@ class EchoApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         context = this
+        android.util.Log.i("EchoMode", "USE_LOCAL_API=${BuildConfig.USE_LOCAL_API}")
         KVCache.init(this)
         //MusicPlayService.start()
     }
