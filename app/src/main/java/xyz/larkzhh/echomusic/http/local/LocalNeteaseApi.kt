@@ -33,7 +33,6 @@ import xyz.larkzhh.echomusic.model.UserRecordResult
 import xyz.larkzhh.echomusic.model.VideoGroupResult
 import xyz.larkzhh.echomusic.model.VideoGroupTabsResult
 import xyz.larkzhh.echomusic.model.VideoUrlsResult
-import java.io.IOException
 
 /** 直连某抑云，不经过本地 Node 服务 */
 class LocalNeteaseApi(
@@ -146,7 +145,15 @@ class LocalNeteaseApi(
         type: Int,
         limit: Int,
         time: Long,
-    ): FloorCommentResult = throw IOException("本地模式暂不支持楼层评论")
+    ): FloorCommentResult = post(
+        "/weapi/resource/comment/floor/get",
+        mapOf(
+            "parentCommentId" to parentCommentId,
+            "threadId" to threadId(type, id),
+            "time" to if (time <= 0) -1 else time,
+            "limit" to limit,
+        )
+    )
 
     override suspend fun getLyric(id: Long): LyricResult =
         post(
@@ -155,10 +162,13 @@ class LocalNeteaseApi(
         )
 
     override suspend fun getVideoGroupTabs(): VideoGroupTabsResult =
-        throw IOException("本地模式暂不支持视频分组")
+        post("/weapi/cloudvideo/group/list", emptyMap())
 
     override suspend fun getVideoGroup(id: Int, offset: Int): VideoGroupResult =
-        throw IOException("本地模式暂不支持视频分组")
+        post(
+            "/weapi/videotimeline/videogroup/otherclient/get",
+            mapOf("groupId" to id, "offset" to offset, "need_preview_url" to "true", "total" to true)
+        )
 
     override suspend fun getMvAll(area: String, offset: Int, limit: Int): MvAllResult {
         val tags = """{"地区":"${if (area.isBlank()) "全部" else area}","类型":"全部","排序":"上升最快"}"""
@@ -184,7 +194,7 @@ class LocalNeteaseApi(
         post("/weapi/mv/first", mapOf("area" to "", "limit" to limit, "total" to true))
 
     override suspend fun getVideoUrl(id: String): VideoUrlsResult =
-        throw IOException("本地模式暂不支持视频播放")
+        post("/weapi/cloudvideo/playurl", mapOf("ids" to "[\"$id\"]", "resolution" to 1080))
 
     override suspend fun getTopList(t: String): TopListResult =
         post("/weapi/toplist/detail", emptyMap())
