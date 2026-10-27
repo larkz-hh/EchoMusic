@@ -9,7 +9,7 @@ plugins {
     id("com.google.dagger.hilt.android")
 }
 
-val useLocalApi = (project.findProperty("localApi") as String?)?.toBoolean() ?: false
+val useLocalApi = (project.findProperty("localApi") as String?)?.toBoolean() ?: true
 
 android {
     namespace = "xyz.larkzhh.echomusic"
