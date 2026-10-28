@@ -129,15 +129,26 @@ class LocalNeteaseApi(
         pageSize: Int,
         sortType: Int,
         cursor: String,
-    ): NewCommentResult = post(
-        "/weapi/v2/resource/comments/${threadId(type, id)}",
-        mapOf(
-            "cursor" to cursor.ifBlank { ((pageNo - 1) * pageSize).toString() },
-            "pageSize" to pageSize,
-            "sortType" to sortType,
-            "showInner" to true,
+    ): NewCommentResult {
+        val sort = if (sortType == 1) 99 else sortType
+        val cursorValue = when (sort) {
+            99 -> cursor.ifBlank { ((pageNo - 1) * pageSize).toString() }
+            2 -> "normalHot#${(pageNo - 1) * pageSize}"
+            3 -> cursor.ifBlank { "0" }
+            else -> ""
+        }
+        return post(
+            "/weapi/v2/resource/comments",
+            mapOf(
+                "threadId" to threadId(type, id),
+                "pageNo" to pageNo,
+                "showInner" to true,
+                "pageSize" to pageSize,
+                "cursor" to cursorValue,
+                "sortType" to sort,
+            )
         )
-    )
+    }
 
     override suspend fun getCommentFloor(
         parentCommentId: Long,
