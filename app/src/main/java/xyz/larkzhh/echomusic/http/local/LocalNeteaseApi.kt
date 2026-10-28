@@ -213,7 +213,8 @@ class LocalNeteaseApi(
     override suspend fun getSingerList(type: String, area: String): SingleListResult =
         post(
             "/weapi/v1/artist/list",
-            mapOf("type" to type, "area" to area, "initial" to -1, "offset" to 0, "limit" to 1000, "total" to true)
+            // limit 超过 100 服务端会返回空列表
+            mapOf("type" to type, "area" to area, "initial" to -1, "offset" to 0, "limit" to 100, "total" to true)
         )
 
     private fun threadId(type: Int, id: String): String = when (type) {
