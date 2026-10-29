@@ -4,6 +4,7 @@ import android.text.TextUtils
 import android.text.format.DateUtils
 import xyz.larkzhh.echomusic.model.LyricResult
 import xyz.larkzhh.echomusic.viewmodel.LyricModel
+import xyz.larkzhh.echomusic.viewmodel.LyricWord
 import java.util.*
 import java.util.regex.Matcher
 import java.util.regex.Pattern
@@ -12,22 +13,67 @@ import java.util.regex.Pattern
 object LyricUtil {
     private val PATTERN_LINE = Pattern.compile("((\\[\\d\\d:\\d\\d\\.\\d{2,3}\\])+)(.+)")
     private val PATTERN_TIME = Pattern.compile("\\[(\\d\\d):(\\d\\d)\\.(\\d{2,3})\\]")
+    private val PATTERN_YRC_LINE = Pattern.compile("\\[(\\d+),(\\d+)\\](.*)")
+    private val PATTERN_YRC_WORD = Pattern.compile("\\((\\d+),(\\d+),-?\\d+\\)([^(]*)")
 
     fun parse(lyricResult: LyricResult): List<LyricModel> {
+        val yrcTexts = lyricResult.yrc?.lyric ?: ""
         val originLrcTexts = lyricResult.lrc?.lyric ?: ""
         val originTLyricTexts = lyricResult.tlyric?.lyric ?: ""
-        val lyricModelList = parseLyrics(originLrcTexts)
+        // 有逐字歌词就优先用逐字
+        val lyricModelList = if (yrcTexts.isNotBlank()) {
+            parseYrc(yrcTexts)
+        } else {
+            parseLyrics(originLrcTexts)
+        }
         val tLyricModelList = parseTlyrics(originTLyricTexts)
         lyricModelList.forEach { lyricModel ->
-            tLyricModelList.forEach inner@{ tLyricModel ->
-                if (lyricModel.time == tLyricModel.time) {
-                    lyricModel.tLyric = tLyricModel.tLyric
-                    return@inner
+            val matched = tLyricModelList.firstOrNull { it.time == lyricModel.time }
+                ?: tLyricModelList.firstOrNull {
+                    kotlin.math.abs(it.time - lyricModel.time) <= 500
                 }
-            }
+            matched?.let { lyricModel.tLyric = it.tLyric }
         }
 
         return lyricModelList
+    }
+
+    /**
+     * 解析逐字歌词 [start,duration](wordStart,wordDuration,0)文字
+     */
+    private fun parseYrc(yrc: String): List<LyricModel> {
+        val entryList = ArrayList<LyricModel>()
+        yrc.split("\n").forEach { raw ->
+            val line = raw.trim()
+            if (line.isEmpty()) {
+                return@forEach
+            }
+            val lineMatcher = PATTERN_YRC_LINE.matcher(line)
+            if (!lineMatcher.matches()) {
+                return@forEach
+            }
+            val start = lineMatcher.group(1)?.toLongOrNull() ?: return@forEach
+            val words = ArrayList<LyricWord>()
+            val wordMatcher = PATTERN_YRC_WORD.matcher(lineMatcher.group(3) ?: "")
+            while (wordMatcher.find()) {
+                val wordStart = wordMatcher.group(1)?.toLongOrNull() ?: continue
+                val wordDuration = wordMatcher.group(2)?.toLongOrNull() ?: 0
+                val text = wordMatcher.group(3) ?: ""
+                if (text.isNotEmpty()) {
+                    words.add(LyricWord(text, wordStart, wordDuration))
+                }
+            }
+            if (words.isNotEmpty()) {
+                entryList.add(
+                    LyricModel(
+                        time = start,
+                        lyric = words.joinToString("") { it.text },
+                        words = words
+                    )
+                )
+            }
+        }
+        return entryList
     }
 
     /**

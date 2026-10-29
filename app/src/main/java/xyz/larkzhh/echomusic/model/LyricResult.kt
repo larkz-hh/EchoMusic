@@ -8,7 +8,9 @@ class LyricResult(
     val transUser: LyricContributorBean?,
     val lyricUser: LyricContributorBean?,
     val lrc: LrcBean?,
-    val tlyric: LrcBean?
+    val tlyric: LrcBean?,
+    // 逐字歌词
+    val yrc: LrcBean? = null
 ) : BaseResult()
 
 @Keep

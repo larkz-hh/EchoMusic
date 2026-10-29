@@ -2,6 +2,7 @@ package xyz.larkzhh.echomusic.viewmodel
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import xyz.larkzhh.echomusic.core.player.IPlayerListener
@@ -42,6 +43,9 @@ class PlayMusicViewModel @Inject constructor(private val api: NeteaseApi) : Base
     val lyricModelList = mutableListOf<LyricModel>()
     var curLyricIndex by mutableStateOf(-1)
     var curPlayPosition = 0
+
+    // 逐字高亮用的播放进度
+    var curLyricPosition by mutableIntStateOf(0)
 
     init {
         EventBus.getDefault().register(this)
@@ -89,6 +93,7 @@ class PlayMusicViewModel @Inject constructor(private val api: NeteaseApi) : Base
 
     override fun onProgress(totalDuring: Int, currentPosition: Int, percentage: Int) {
         curPlayPosition = currentPosition
+        curLyricPosition = currentPosition
         curLyricIndex = lyricModelList.indexOfFirst {
             currentPosition < it.time
         } - 1
@@ -102,5 +107,13 @@ class PlayMusicViewModel @Inject constructor(private val api: NeteaseApi) : Base
 data class LyricModel(
     val time: Long,
     val lyric: String? = null,
-    var tLyric: String? = null
+    var tLyric: String? = null,
+    // 逐字时间轴，为空表示普通歌词
+    val words: List<LyricWord>? = null
+)
+
+data class LyricWord(
+    val text: String,
+    val start: Long,
+    val duration: Long
 )

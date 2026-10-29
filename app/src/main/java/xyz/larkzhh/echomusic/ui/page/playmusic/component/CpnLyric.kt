@@ -16,8 +16,12 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.hilt.navigation.compose.hiltViewModel
 import xyz.larkzhh.echomusic.core.MusicPlayController
 import xyz.larkzhh.echomusic.core.viewstate.ViewStateComponent
@@ -29,6 +33,7 @@ import xyz.larkzhh.echomusic.utils.csp
 import xyz.larkzhh.echomusic.utils.onClick
 import xyz.larkzhh.echomusic.utils.transformDp
 import xyz.larkzhh.echomusic.viewmodel.LyricModel
+import xyz.larkzhh.echomusic.viewmodel.LyricWord
 import xyz.larkzhh.echomusic.viewmodel.PlayMusicViewModel
 
 
@@ -177,6 +182,7 @@ private fun LyricConstructorInfo(transUser: LyricContributorBean?, lyricUser: Ly
 
 @Composable
 private fun LyricItem(index: Int, lyricModel: LyricModel, viewModel: PlayMusicViewModel) {
+    val isCurrent = viewModel.curLyricIndex == index
 
     Column(
         modifier = Modifier
@@ -185,25 +191,48 @@ private fun LyricItem(index: Int, lyricModel: LyricModel, viewModel: PlayMusicVi
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        lyricModel.lyric?.let {
+        val words = lyricModel.words
+        if (words != null && isCurrent) {
+            // 当前行有逐字时间轴，按播放进度逐字上色
             Text(
-                text = it,
+                text = karaokeText(words, viewModel.curLyricPosition, AppColorsProvider.current.primary),
                 fontSize = 32.csp,
-                color = if (viewModel.curLyricIndex == index) AppColorsProvider.current.primary else Color.White,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
             )
+        } else {
+            lyricModel.lyric?.let {
+                Text(
+                    text = it,
+                    fontSize = 32.csp,
+                    color = if (isCurrent) AppColorsProvider.current.primary else Color.White,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            }
         }
         lyricModel.tLyric?.let {
             Text(
                 text = it,
                 fontSize = 30.csp,
-                color = if (viewModel.curLyricIndex == index) AppColorsProvider.current.primary else Color.White,
+                color = if (isCurrent) AppColorsProvider.current.primary else Color.White,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 16.cdp),
                 textAlign = TextAlign.Center
             )
+        }
+    }
+}
+
+private fun karaokeText(words: List<LyricWord>, position: Int, highlight: Color): AnnotatedString {
+    return buildAnnotatedString {
+        words.forEach { word ->
+            withStyle(
+                SpanStyle(color = if (position >= word.start) highlight else Color.White)
+            ) {
+                append(word.text)
+            }
         }
     }
 }

@@ -169,7 +169,10 @@ class LocalNeteaseApi(
     override suspend fun getLyric(id: Long): LyricResult =
         post(
             "/weapi/song/lyric",
-            mapOf("id" to id, "tv" to -1, "lv" to -1, "rv" to -1, "kv" to -1, "_nmclfl" to 1)
+            mapOf(
+                "id" to id, "tv" to -1, "lv" to -1, "rv" to -1, "kv" to -1,
+                "yv" to -1, "ytv" to -1, "yrv" to -1, "_nmclfl" to 1
+            )
         )
 
     override suspend fun getVideoGroupTabs(): VideoGroupTabsResult =

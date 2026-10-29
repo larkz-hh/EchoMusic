@@ -227,7 +227,8 @@ object EchoPlayer : IPlayer {
         mProgressJob = playerScope.launch {
             while (isActive) {
                 setProgress()
-                delay(1000)
+                // 逐字歌词需要更细的进度粒度
+                delay(200)
             }
         }
     }
