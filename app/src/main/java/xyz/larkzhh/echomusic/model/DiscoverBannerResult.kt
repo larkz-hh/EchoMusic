@@ -18,6 +18,8 @@ data class DiscoverBannerItem(
     val targetId: Long?,
     val bigImageUrl: String?,
     val imageUrl: String?,
+    // Android 端接口只返回 pic
+    val pic: String? = null,
     val targetType: Int?,
     val typeTitle: String?,
     val s_ctrp: String?,

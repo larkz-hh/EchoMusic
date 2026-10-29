@@ -91,7 +91,7 @@ fun CpnDiscoveryBanner(banners: List<DiscoverBannerItem>) {
                 }
         ) { page ->
             val banner = displayBanners.getOrNull(page)
-            val coverUrl = banner?.bigImageUrl ?: banner?.imageUrl
+            val coverUrl = banner?.bigImageUrl ?: banner?.imageUrl ?: banner?.pic
             CommonNetworkImage(
                 url = coverUrl,
                 modifier = Modifier.fillMaxSize(),
