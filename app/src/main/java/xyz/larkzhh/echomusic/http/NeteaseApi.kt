@@ -31,6 +31,7 @@ import xyz.larkzhh.echomusic.model.HotSearchResult
 import xyz.larkzhh.echomusic.model.LikeListResult
 import xyz.larkzhh.echomusic.model.SearchSuggestResult
 import xyz.larkzhh.echomusic.model.TopListResult
+import xyz.larkzhh.echomusic.model.TopPlaylistResult
 import xyz.larkzhh.echomusic.model.UserRecordResult
 
 
@@ -192,6 +193,15 @@ interface NeteaseApi {
     //排行榜
     @GET("/toplist/detail")
     suspend fun getTopList(@Query("t") t: String): TopListResult
+
+    // 歌单广场
+    @GET("/top/playlist")
+    suspend fun getTopPlaylist(
+        @Query("cat") cat: String,
+        @Query("limit") limit: Int = 50,
+        @Query("offset") offset: Int = 0,
+        @Query("order") order: String = "hot",
+    ): TopPlaylistResult
 
 
     @GET("/artist/list")

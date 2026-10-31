@@ -1,6 +1,7 @@
 package xyz.larkzhh.echomusic.ui.page.discovery.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,18 +21,18 @@ import xyz.larkzhh.echomusic.utils.cdp
 import xyz.larkzhh.echomusic.utils.csp
 
 @Composable
-fun CpnDiscoveryEntryGrid() {
+fun CpnDiscoveryEntryGrid(onEntryClick: (String) -> Unit = {}) {
     Column(
         modifier = Modifier.padding(horizontal = 24.cdp),
         verticalArrangement = Arrangement.spacedBy(12.cdp)
     ) {
-        DiscoveryEntryRow(ENTRY_LIST.take(4))
-        DiscoveryEntryRow(ENTRY_LIST.drop(4))
+        DiscoveryEntryRow(ENTRY_LIST.take(4), onEntryClick)
+        DiscoveryEntryRow(ENTRY_LIST.drop(4), onEntryClick)
     }
 }
 
 @Composable
-private fun DiscoveryEntryRow(items: List<String>) {
+private fun DiscoveryEntryRow(items: List<String>, onEntryClick: (String) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.cdp)
@@ -43,6 +44,7 @@ private fun DiscoveryEntryRow(items: List<String>) {
                     .height(60.cdp)
                     .clip(RoundedCornerShape(12.cdp))
                     .background(AppColorsProvider.current.card)
+                    .clickable { onEntryClick(title) }
             ) {
                 Text(
                     text = title,

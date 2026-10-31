@@ -28,6 +28,7 @@ import xyz.larkzhh.echomusic.model.SongCommentResult
 import xyz.larkzhh.echomusic.model.SongDetailResult
 import xyz.larkzhh.echomusic.model.SongUrlBean
 import xyz.larkzhh.echomusic.model.TopListResult
+import xyz.larkzhh.echomusic.model.TopPlaylistResult
 import xyz.larkzhh.echomusic.model.UserPlaylistResult
 import xyz.larkzhh.echomusic.model.UserRecordResult
 import xyz.larkzhh.echomusic.model.VideoGroupResult
@@ -212,6 +213,12 @@ class LocalNeteaseApi(
 
     override suspend fun getTopList(t: String): TopListResult =
         post("/weapi/toplist/detail", emptyMap())
+
+    override suspend fun getTopPlaylist(cat: String, limit: Int, offset: Int, order: String): TopPlaylistResult =
+        post(
+            "/weapi/playlist/list",
+            mapOf("cat" to cat, "order" to order, "limit" to limit, "offset" to offset, "total" to true)
+        )
 
     override suspend fun getSingerList(type: String, area: String): SingleListResult =
         post(

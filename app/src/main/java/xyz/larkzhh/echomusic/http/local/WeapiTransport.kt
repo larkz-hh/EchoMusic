@@ -110,6 +110,7 @@ class WeapiTransport {
             "/weapi/mv/first",
             "/weapi/cloudvideo/group/list",
             "/weapi/videotimeline/videogroup/otherclient/get",
+            "/weapi/playlist/list",
         )
     }
 }

@@ -1,5 +1,6 @@
 package xyz.larkzhh.echomusic.ui.page.discovery
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -64,7 +65,14 @@ fun DiscoveryPage(drawerState: DrawerState) {
             verticalArrangement = Arrangement.spacedBy(20.cdp)
         ) {
             item { CpnDiscoveryBanner(viewModel.banners) }
-            item { CpnDiscoveryEntryGrid() }
+            item {
+                CpnDiscoveryEntryGrid { title ->
+                    val cat = discoverEntryCat(title)
+                    EchoNavController.instance.navigate(
+                        "${RouterUrls.PLAYLIST_SQUARE}/${Uri.encode(cat)}"
+                    )
+                }
+            }
 
             item {
                 CpnDiscoveryCuratedPlaylists(
@@ -82,4 +90,17 @@ fun DiscoveryPage(drawerState: DrawerState) {
             item { Spacer(modifier = Modifier.height(28.cdp)) }
         }
     }
+}
+
+/** 发现页入口对应的歌单分类 */
+private fun discoverEntryCat(title: String): String = when (title) {
+    "排行榜" -> "榜单"
+    "歌单" -> "全部"
+    "原创" -> "官方"
+    "VIP" -> "官方"
+    "经典" -> "经典"
+    "欧美" -> "欧美"
+    "粤语" -> "粤语"
+    "驾车" -> "驾车"
+    else -> "全部"
 }
