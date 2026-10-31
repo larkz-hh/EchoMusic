@@ -2,17 +2,24 @@ package xyz.larkzhh.echomusic.ui.page.home.component
 
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import xyz.larkzhh.echomusic.core.AppGlobalData
+import xyz.larkzhh.echomusic.core.audio.EqController
+import xyz.larkzhh.echomusic.ui.page.playmusic.component.EqSheet
 import xyz.larkzhh.echomusic.nav.EchoNavController
 import xyz.larkzhh.echomusic.nav.RouterUrls
 import xyz.larkzhh.echomusic.compose.CommonIcon
@@ -135,6 +142,36 @@ private fun SettingComponent() {
         )
 
         CpnDrawerThemeSetting()
+
+        var showEqSheet by remember { mutableStateOf(false) }
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            thickness = 1.cdp,
+            color = AppColorsProvider.current.divider
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showEqSheet = true }
+                .padding(horizontal = 32.cdp, vertical = 24.cdp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "音效",
+                fontSize = 28.csp,
+                color = AppColorsProvider.current.secondText
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = EqController.preset.title,
+                fontSize = 26.csp,
+                color = AppColorsProvider.current.thirdText
+            )
+        }
+
+        if (showEqSheet) {
+            EqSheet(onDismiss = { showEqSheet = false })
+        }
 
         if (AppGlobalData.sLoginResult != null) {
             HorizontalDivider(
