@@ -15,15 +15,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import xyz.larkzhh.echomusic.R
 import xyz.larkzhh.echomusic.compose.CommonIcon
-import xyz.larkzhh.echomusic.utils.cdp
+import xyz.larkzhh.echomusic.ui.theme.*
 import xyz.larkzhh.echomusic.ui.theme.color.palette.dark.DarkColorPalette
 import xyz.larkzhh.echomusic.ui.theme.color.palette.light.*
+import xyz.larkzhh.echomusic.utils.cdp
+import xyz.larkzhh.echomusic.utils.csp
 import xyz.larkzhh.echomusic.utils.onClick
 import kotlinx.coroutines.launch
-import xyz.larkzhh.echomusic.R
-import xyz.larkzhh.echomusic.ui.theme.*
-import xyz.larkzhh.echomusic.utils.csp
 
 @Composable
 fun CpnDrawerThemeSetting() {
@@ -32,6 +32,9 @@ fun CpnDrawerThemeSetting() {
     }
     val themeListHeight = 88 * themeModels.size
     val scope = rememberCoroutineScope()
+    val currentTheme = themeModels.firstOrNull { it.themeType == themeTypeState.value }
+        ?: themeModels.first()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -58,7 +61,7 @@ fun CpnDrawerThemeSetting() {
                         fontSize = 28.csp
                     )
                 ) {
-                    append("（${themeModels[lastSelectedThemeIndex].value.name}）")
+                    append("（${currentTheme.name}）")
                 }
             },
         ) {
@@ -70,45 +73,37 @@ fun CpnDrawerThemeSetting() {
                     anim.animateTo(0f, tween(500))
                 }
             }
-
         }
-        if (anim.value != 88f || !showThemeList) {
-            themeModels.forEachIndexed { index, themeModel ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(88.cdp)
-                        .onClick {
-                            themeTypeState.value = themeModel.value.themeType
-                            themeModels[lastSelectedThemeIndex].value = themeModels[lastSelectedThemeIndex].value.copy(selected = false)
-                            lastSelectedThemeIndex = index
-                            themeModels[index].value = themeModels[index].value.copy(selected = true)
-                        }
-                        .padding(horizontal = 32.cdp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier.size(40.cdp)
-                            .clip(RoundedCornerShape(50))
-                            .background(themeModel.value.color)
+        themeModels.forEach { themeModel ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(88.cdp)
+                    .onClick { setThemeType(themeModel.themeType) }
+                    .padding(horizontal = 32.cdp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier.size(40.cdp)
+                        .clip(RoundedCornerShape(50))
+                        .background(themeModel.color)
+                )
+
+                Text(
+                    text = themeModel.name,
+                    modifier = Modifier.padding(start = 24.cdp),
+                    fontSize = 32.csp,
+                    color = AppColorsProvider.current.secondText
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                if (themeModel.themeType == themeTypeState.value) {
+                    CommonIcon(
+                        resId = R.drawable.ic_checked,
+                        modifier = Modifier.size(32.cdp),
+                        tint = themeModel.color
                     )
-
-                    Text(
-                        text = themeModel.value.name,
-                        modifier = Modifier.padding(start = 24.cdp),
-                        fontSize = 32.csp,
-                        color = AppColorsProvider.current.secondText
-                    )
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    if (themeModels[index].value.selected) {
-                        CommonIcon(
-                            resId = R.drawable.ic_checked,
-                            modifier = Modifier.size(32.cdp),
-                            tint = themeModel.value.color
-                        )
-                    }
                 }
             }
         }
@@ -116,15 +111,15 @@ fun CpnDrawerThemeSetting() {
 }
 
 private var showThemeList by mutableStateOf(false)
-private var lastSelectedThemeIndex = 0
-private val themeModels = mutableStateListOf(
-    mutableStateOf(ThemeModel("默认", THEME_DEFAULT, DefaultColorPalette.primary, true)),
-    mutableStateOf(ThemeModel("夜间", THEME_NIGHT, DarkColorPalette.pure, false)),
-    mutableStateOf(ThemeModel("蓝色", THEME_BLUE, BlueColorPalette.primary, false)),
-    mutableStateOf(ThemeModel("绿色", THEME_GREEN, GreenColorPalette.primary, false)),
-    mutableStateOf(ThemeModel("橙色", THEME_ORIGIN, OriginColorPalette.primary, false)),
-    mutableStateOf(ThemeModel("紫色", THEME_PURPLE, PurpleColorPalette.primary, false)),
-    mutableStateOf(ThemeModel("黄色", THEME_YELLOW, YellowColorPalette.primary, false)),)
 
+private val themeModels = listOf(
+    ThemeModel("默认", THEME_DEFAULT, DefaultColorPalette.primary),
+    ThemeModel("夜间", THEME_NIGHT, DarkColorPalette.pure),
+    ThemeModel("蓝色", THEME_BLUE, BlueColorPalette.primary),
+    ThemeModel("绿色", THEME_GREEN, GreenColorPalette.primary),
+    ThemeModel("橙色", THEME_ORIGIN, OriginColorPalette.primary),
+    ThemeModel("紫色", THEME_PURPLE, PurpleColorPalette.primary),
+    ThemeModel("黄色", THEME_YELLOW, YellowColorPalette.primary),
+)
 
-data class ThemeModel(val name: String, val themeType: Int, val color: Color, val selected: Boolean)
+data class ThemeModel(val name: String, val themeType: Int, val color: Color)
