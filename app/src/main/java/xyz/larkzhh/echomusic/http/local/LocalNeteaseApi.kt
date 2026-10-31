@@ -227,10 +227,15 @@ class LocalNeteaseApi(
             mapOf("type" to type, "area" to area, "initial" to -1, "offset" to 0, "limit" to 100, "total" to true)
         )
 
+    /** 与 NeteaseCloudMusicApi 的 resourceTypeMap 保持一致 */
     private fun threadId(type: Int, id: String): String = when (type) {
-        1 -> "R_AL_3_$id"
-        2 -> "R_VI_62_$id"
-        4 -> "R_MV_5_$id"
+        1 -> "R_MV_5_$id"
+        2 -> "A_PL_0_$id"
+        3 -> "R_AL_3_$id"
+        4 -> "A_DJ_1_$id"
+        5 -> "R_VI_62_$id"
+        6 -> "A_EV_2_$id"
+        7 -> "A_DR_14_$id"
         else -> "R_SO_4_$id"
     }
 
