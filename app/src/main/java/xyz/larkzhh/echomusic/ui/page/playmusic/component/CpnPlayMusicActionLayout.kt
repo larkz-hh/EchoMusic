@@ -95,11 +95,16 @@ private fun MiddleActionLayout() {
             LikeStore.setLiked(songId, target)
             scope.launch {
                 val result = runCatching { api.like(songId, target) }
-                if (result.isSuccess) {
+                val body = result.getOrNull()
+                if (body?.resultOk() == true) {
                     showToast(if (target) "已喜欢" else "已取消喜欢")
                 } else {
                     LikeStore.setLiked(songId, !target)
-                    showToast(errorMessage(result.exceptionOrNull()) ?: "操作失败，请检查登录状态")
+                    showToast(
+                        body?.message?.takeIf { it.isNotBlank() }
+                            ?: errorMessage(result.exceptionOrNull())
+                            ?: "操作失败，请检查登录状态"
+                    )
                 }
             }
         }

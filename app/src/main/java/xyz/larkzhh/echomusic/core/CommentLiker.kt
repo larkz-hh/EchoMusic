@@ -6,13 +6,14 @@ import xyz.larkzhh.echomusic.hilt.entrypoint.EntryPointFinder
 object CommentLiker {
 
     suspend fun like(resourceId: String, type: Int, commentId: Long, like: Boolean): Boolean {
-        return runCatching {
+        val result = runCatching {
             EntryPointFinder.getEchoApi().likeComment(
                 id = resourceId,
                 commentId = commentId,
                 like = if (like) 1 else 0,
                 type = type,
             )
-        }.isSuccess
+        }
+        return result.getOrNull()?.resultOk() == true
     }
 }

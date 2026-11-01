@@ -141,13 +141,18 @@ private fun VideoInfoComponent(video: Video) {
                     liked = target
                     likedCount = (likedCount + if (target) 1 else -1).coerceAtLeast(0)
                     scope.launch {
-                        val success = runCatching {
+                        val result = runCatching {
                             api.likeResource(id = vid, type = 5, t = if (target) 1 else 0)
-                        }.isSuccess
-                        if (!success) {
+                        }
+                        if (result.getOrNull()?.resultOk() == true) {
+                            showToast(if (target) "已点赞" else "已取消点赞")
+                        } else {
                             liked = !target
                             likedCount = (likedCount + if (target) -1 else 1).coerceAtLeast(0)
-                            showToast("操作失败，请检查登录状态")
+                            showToast(
+                                result.getOrNull()?.message?.takeIf { it.isNotBlank() }
+                                    ?: "操作失败，请检查登录状态"
+                            )
                         }
                     }
                 }
@@ -181,14 +186,17 @@ private fun VideoInfoComponent(video: Video) {
                     val target = !collected
                     collected = target
                     scope.launch {
-                        val success = runCatching {
+                        val result = runCatching {
                             api.collectVideo(id = vid, t = if (target) 1 else 0)
-                        }.isSuccess
-                        if (success) {
+                        }
+                        if (result.getOrNull()?.resultOk() == true) {
                             showToast(if (target) "已收藏" else "已取消收藏")
                         } else {
                             collected = !target
-                            showToast("操作失败，请检查登录状态")
+                            showToast(
+                                result.getOrNull()?.message?.takeIf { it.isNotBlank() }
+                                    ?: "操作失败，请检查登录状态"
+                            )
                         }
                     }
                 }
