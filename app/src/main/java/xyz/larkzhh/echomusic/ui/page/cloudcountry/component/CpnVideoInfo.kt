@@ -1,26 +1,37 @@
 package xyz.larkzhh.echomusic.ui.page.cloudcountry.component
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 import xyz.larkzhh.echomusic.model.Video
 import xyz.larkzhh.echomusic.compose.CommonIcon
 import xyz.larkzhh.echomusic.compose.CommonNetworkImage
+import xyz.larkzhh.echomusic.hilt.entrypoint.EntryPointFinder
 import xyz.larkzhh.echomusic.ui.page.comment.showVideoCommentSheet
 import xyz.larkzhh.echomusic.utils.StringUtil
 import xyz.larkzhh.echomusic.utils.cdp
 import xyz.larkzhh.echomusic.utils.onClick
+import xyz.larkzhh.echomusic.utils.showToast
 import xyz.larkzhh.echomusic.viewmodel.VideoPlayViewModel
 import xyz.larkzhh.echomusic.R
 import xyz.larkzhh.echomusic.ui.theme.AppColorsProvider
@@ -44,6 +55,13 @@ fun BoxScope.CpnVideoInfo(video: Video) {
 @Composable
 private fun VideoInfoComponent(video: Video) {
     val viewModel: VideoPlayViewModel = hiltViewModel()
+    val scope = rememberCoroutineScope()
+    val api = remember { EntryPointFinder.getEchoApi() }
+    val context = LocalContext.current
+    val vid = video.vid ?: ""
+    var liked by remember(vid) { mutableStateOf(false) }
+    var likedCount by remember(vid) { mutableIntStateOf(video.praisedCount) }
+    var collected by remember(vid) { mutableStateOf(false) }
     if (viewModel.showVideoInfo) {
         Row(
             //modifier = Modifier.padding(bottom = 40.cdp),
@@ -113,8 +131,26 @@ private fun VideoInfoComponent(video: Video) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 VideoActionButton(
                     R.drawable.ic_video_fabulous,
-                    StringUtil.friendlyNumber(video.praisedCount)
-                )
+                    StringUtil.friendlyNumber(likedCount),
+                    tint = if (liked) Color(0xFFFF4D4F) else Color.White
+                ) {
+                    if (vid.isBlank()) {
+                        return@VideoActionButton
+                    }
+                    val target = !liked
+                    liked = target
+                    likedCount = (likedCount + if (target) 1 else -1).coerceAtLeast(0)
+                    scope.launch {
+                        val success = runCatching {
+                            api.likeResource(id = vid, type = 5, t = if (target) 1 else 0)
+                        }.isSuccess
+                        if (!success) {
+                            liked = !target
+                            likedCount = (likedCount + if (target) -1 else 1).coerceAtLeast(0)
+                            showToast("操作失败，请检查登录状态")
+                        }
+                    }
+                }
                 VideoActionButton(
                     R.drawable.ic_video_comment,
                     StringUtil.friendlyNumber(video.commentCount)
@@ -124,8 +160,38 @@ private fun VideoInfoComponent(video: Video) {
                 VideoActionButton(
                     R.drawable.ic_video_share,
                     StringUtil.friendlyNumber(video.shareCount)
-                )
-                VideoActionButton(R.drawable.ic_video_collect, "收藏", 10.cdp)
+                ) {
+                    if (vid.isNotBlank()) {
+                        val share = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "https://music.163.com/video/$vid")
+                        }
+                        context.startActivity(Intent.createChooser(share, "分享视频"))
+                    }
+                }
+                VideoActionButton(
+                    R.drawable.ic_video_collect,
+                    if (collected) "已收藏" else "收藏",
+                    paddingBottom = 10.cdp,
+                    tint = if (collected) AppColorsProvider.current.primary else Color.White
+                ) {
+                    if (vid.isBlank()) {
+                        return@VideoActionButton
+                    }
+                    val target = !collected
+                    collected = target
+                    scope.launch {
+                        val success = runCatching {
+                            api.collectVideo(id = vid, t = if (target) 1 else 0)
+                        }.isSuccess
+                        if (success) {
+                            showToast(if (target) "已收藏" else "已取消收藏")
+                        } else {
+                            collected = !target
+                            showToast("操作失败，请检查登录状态")
+                        }
+                    }
+                }
 
                 CpnVideoSongDisk(video)
             }
@@ -134,7 +200,13 @@ private fun VideoInfoComponent(video: Video) {
 }
 
 @Composable
-private fun VideoActionButton(iconResId: Int, text: String, paddingBottom: Dp = 54.cdp, onClick: (() -> Unit)? = null) {
+private fun VideoActionButton(
+    iconResId: Int,
+    text: String,
+    paddingBottom: Dp = 54.cdp,
+    tint: Color = Color.White,
+    onClick: (() -> Unit)? = null
+) {
     Column(
         modifier = Modifier
             .padding(bottom = paddingBottom, start = 60.cdp)
@@ -146,7 +218,7 @@ private fun VideoActionButton(iconResId: Int, text: String, paddingBottom: Dp = 
     ) {
         CommonIcon(
             resId = iconResId,
-            tint = Color.White,
+            tint = tint,
             modifier = Modifier
                 .padding(bottom = 12.cdp)
                 .size(48.cdp)

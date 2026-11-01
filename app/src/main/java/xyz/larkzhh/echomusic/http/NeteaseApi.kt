@@ -203,6 +203,21 @@ interface NeteaseApi {
         @Query("order") order: String = "hot",
     ): TopPlaylistResult
 
+    // 资源点赞，type 见 resourceTypeMap，视频为 5
+    @GET("/resource/like")
+    suspend fun likeResource(
+        @Query("id") id: String,
+        @Query("type") type: Int,
+        @Query("t") t: Int,
+    ): BaseResult
+
+    // 收藏视频
+    @GET("/video/sub")
+    suspend fun collectVideo(
+        @Query("id") id: String,
+        @Query("t") t: Int,
+    ): BaseResult
+
 
     @GET("/artist/list")
     suspend fun getSingerList(

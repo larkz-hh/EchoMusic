@@ -220,6 +220,18 @@ class LocalNeteaseApi(
             mapOf("cat" to cat, "order" to order, "limit" to limit, "offset" to offset, "total" to true)
         )
 
+    override suspend fun likeResource(id: String, type: Int, t: Int): BaseResult =
+        post(
+            "/weapi/resource/${if (t == 1) "like" else "unlike"}",
+            mapOf("threadId" to threadId(type, id))
+        )
+
+    override suspend fun collectVideo(id: String, t: Int): BaseResult =
+        post(
+            "/weapi/cloudvideo/video/${if (t == 1) "sub" else "unsub"}",
+            mapOf("id" to id)
+        )
+
     override suspend fun getSingerList(type: String, area: String): SingleListResult =
         post(
             "/weapi/v1/artist/list",
