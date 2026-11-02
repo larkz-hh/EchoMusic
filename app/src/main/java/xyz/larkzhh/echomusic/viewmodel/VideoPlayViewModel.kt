@@ -52,8 +52,11 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
     // 当前播放的视频url
     var curVideoUrl by mutableStateOf<String?>(null)
 
-    // 当前播放的视频id
+    // 当前播放的视频 id
     var curVideoId by mutableStateOf<String?>(null)
+
+    // 当前列表位置
+    var curVideoIndex by mutableStateOf(0)
 
     // 播放器状态
     var exoPlayStatus by mutableStateOf(Player.STATE_IDLE)
@@ -196,6 +199,7 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
      */
     fun switchVideoUrl(newIndex: Int) {
         stopVideo()
+        curVideoIndex = newIndex
         if (newIndex > 0) {
             val curMv = videoPagingItems?.itemSnapshotList?.getOrNull(newIndex - 1)
             val mvid = curMv?.id?.toString()
@@ -216,6 +220,21 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
             }
         }
         prefetchAround(newIndex)
+    }
+
+    /**
+     * 列表项渲染时确保当前项的地址已就绪
+     */
+    fun ensureVideoUrl(index: Int, vid: String?) {
+        if (vid.isNullOrBlank()) {
+            return
+        }
+        if (index == curVideoIndex) {
+            curVideoId = vid
+            getMvUrlById(vid, isPreLoad = false)
+        } else {
+            getMvUrlById(vid, isPreLoad = true)
+        }
     }
 
     fun buildVideoPager(areaIndex: Int, initOffset: Int) {

@@ -45,7 +45,7 @@ fun CpnVideoPlay(index: Int, lazyListState: LazyListState, video: Video) {
             if(index == 0) {
                 viewModel.curVideoId = video.vid
             }
-            viewModel.getMvUrlById(video.vid, isPreLoad = index != 0)
+            viewModel.ensureVideoUrl(index, video.vid)
         }
     }
     // 预加载
@@ -130,9 +130,8 @@ private fun CpnVideoSurface(cpnWidth: Dp, cpnHeight: Dp, video: Video) {
         contentAlignment = Alignment.Center
     ) {
 
-        if (viewModel.exoPlayStatus == Player.STATE_READY) {
-            if (viewModel.curVideoUrl == video.urls?.getOrNull(0)?.url) {
-                AndroidView(
+        if (viewModel.exoPlayStatus == Player.STATE_READY && viewModel.curVideoId == video.vid) {
+            AndroidView(
                     modifier = Modifier
                         .aspectRatio(video.width.toFloat() / video.height)
                         .onClick(enableRipple = false) {
@@ -156,16 +155,6 @@ private fun CpnVideoSurface(cpnWidth: Dp, cpnHeight: Dp, video: Video) {
                         tint = Color.White
                     )
                 }
-            } else {
-                CommonNetworkImage(
-                    url = video.coverUrl,
-                    modifier = Modifier
-                        .width(cpnWidth)
-                        .height(cpnHeight),
-                    placeholder = -1,
-                    error = -1
-                )
-            }
         } else {
             CommonNetworkImage(
                 url = video.coverUrl,
@@ -181,9 +170,8 @@ private fun CpnVideoSurface(cpnWidth: Dp, cpnHeight: Dp, video: Video) {
 
 @Composable
 private fun BoxScope.VideoSeekBar(video: Video) {
-    val curItemVideoUrl = video.urls?.getOrNull(0)?.url ?: ""
     val viewModel: VideoPlayViewModel = hiltViewModel()
-    if (curItemVideoUrl == viewModel.curVideoUrl) {
+    if (viewModel.curVideoId == video.vid) {
         SeekBar(
             progress = viewModel.videoProgress,
             seeking = {
