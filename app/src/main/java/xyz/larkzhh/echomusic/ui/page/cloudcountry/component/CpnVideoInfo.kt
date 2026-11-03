@@ -33,12 +33,13 @@ import xyz.larkzhh.echomusic.utils.cdp
 import xyz.larkzhh.echomusic.utils.onClick
 import xyz.larkzhh.echomusic.utils.showToast
 import xyz.larkzhh.echomusic.viewmodel.VideoPlayViewModel
+import xyz.larkzhh.echomusic.viewmodel.VideoStats
 import xyz.larkzhh.echomusic.R
 import xyz.larkzhh.echomusic.ui.theme.AppColorsProvider
 import xyz.larkzhh.echomusic.utils.csp
 
 @Composable
-fun BoxScope.CpnVideoInfo(video: Video) {
+fun BoxScope.CpnVideoInfo(video: Video, stats: VideoStats? = null) {
     val viewModel: VideoPlayViewModel = hiltViewModel()
     Column(
         modifier = Modifier
@@ -47,20 +48,23 @@ fun BoxScope.CpnVideoInfo(video: Video) {
             .graphicsLayer { alpha = viewModel.videoInfoAlpha }
             .align(Alignment.BottomCenter)
     ) {
-        VideoInfoComponent(video)
+        VideoInfoComponent(video, stats)
         BottomComponent()
     }
 }
 
 @Composable
-private fun VideoInfoComponent(video: Video) {
+private fun VideoInfoComponent(video: Video, stats: VideoStats?) {
     val viewModel: VideoPlayViewModel = hiltViewModel()
     val scope = rememberCoroutineScope()
     val api = remember { EntryPointFinder.getEchoApi() }
     val context = LocalContext.current
     val vid = video.vid ?: ""
+    val praisedCount = stats?.praisedCount ?: video.praisedCount
+    val commentCount = stats?.commentCount ?: video.commentCount
+    val shareCount = stats?.shareCount ?: video.shareCount
     var liked by remember(vid) { mutableStateOf(false) }
-    var likedCount by remember(vid) { mutableIntStateOf(video.praisedCount) }
+    var likedCount by remember(vid, praisedCount) { mutableIntStateOf(praisedCount) }
     var collected by remember(vid) { mutableStateOf(false) }
     if (viewModel.showVideoInfo) {
         Row(
@@ -158,13 +162,13 @@ private fun VideoInfoComponent(video: Video) {
                 }
                 VideoActionButton(
                     R.drawable.ic_video_comment,
-                    StringUtil.friendlyNumber(video.commentCount)
+                    StringUtil.friendlyNumber(commentCount)
                 ) {
                     showVideoCommentSheet = true
                 }
                 VideoActionButton(
                     R.drawable.ic_video_share,
-                    StringUtil.friendlyNumber(video.shareCount)
+                    StringUtil.friendlyNumber(shareCount)
                 ) {
                     if (vid.isNotBlank()) {
                         val share = Intent(Intent.ACTION_SEND).apply {

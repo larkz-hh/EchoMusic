@@ -7,6 +7,7 @@ import android.os.Looper
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_READY
@@ -33,8 +34,16 @@ import xyz.larkzhh.echomusic.model.VideoUrlBean
 import xyz.larkzhh.echomusic.utils.NetworkUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
+
+/** 视频互动数据 */
+data class VideoStats(
+    val commentCount: Int,
+    val shareCount: Int,
+    val praisedCount: Int,
+)
 
 
 @HiltViewModel
@@ -57,6 +66,10 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
 
     // 当前列表位置
     var curVideoIndex by mutableStateOf(0)
+
+    // 列表视频的互动数据，分页数据里没有这些字段
+    var videoStats by mutableStateOf<Map<String, VideoStats>>(emptyMap())
+        private set
 
     // 播放器状态
     var exoPlayStatus by mutableStateOf(Player.STATE_IDLE)
@@ -234,6 +247,27 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
             getMvUrlById(vid, isPreLoad = false)
         } else {
             getMvUrlById(vid, isPreLoad = true)
+        }
+    }
+
+    /**
+     * 列表视频的点赞/评论/分享数需要单独取详情
+     */
+    fun loadVideoStats(vid: String?) {
+        if (vid.isNullOrBlank() || videoStats.containsKey(vid)) {
+            return
+        }
+        viewModelScope.launch {
+            runCatching { api.getMvDetail(vid) }
+                .onSuccess { result ->
+                    result.data?.let { detail ->
+                        videoStats = videoStats + (vid to VideoStats(
+                            commentCount = detail.commentCount?.toInt() ?: 0,
+                            shareCount = detail.shareCount?.toInt() ?: 0,
+                            praisedCount = detail.subCount?.toInt() ?: 0,
+                        ))
+                    }
+                }
         }
     }
 

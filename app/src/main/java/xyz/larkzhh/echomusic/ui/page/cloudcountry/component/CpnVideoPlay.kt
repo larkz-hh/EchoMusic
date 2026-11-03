@@ -38,9 +38,14 @@ import androidx.compose.foundation.layout.navigationBars
 
 @Composable
 fun CpnVideoPlay(index: Int, lazyListState: LazyListState, video: Video) {
+    val viewModel: VideoPlayViewModel = hiltViewModel()
+
+    // 分页数据里没有互动数，按 id 补
+    LaunchedEffect(video.vid) {
+        viewModel.loadVideoStats(video.vid)
+    }
 
     if (video.urls?.getOrNull(0) == null) {
-        val viewModel: VideoPlayViewModel = hiltViewModel()
         LaunchedEffect(Unit) {
             if(index == 0) {
                 viewModel.curVideoId = video.vid
@@ -64,7 +69,7 @@ fun CpnVideoPlay(index: Int, lazyListState: LazyListState, video: Video) {
 
         CpnVideoSurface(index, cpnWidth, cpnHeight, video)
 
-        CpnVideoInfo(video)
+        CpnVideoInfo(video, viewModel.videoStats[video.vid])
         VideoSeekBar(index, video)
     }
 }
