@@ -62,10 +62,10 @@ fun CpnVideoPlay(index: Int, lazyListState: LazyListState, video: Video) {
             .videoDragDetect(index, lazyListState)
     ) {
 
-        CpnVideoSurface(cpnWidth, cpnHeight, video)
+        CpnVideoSurface(index, cpnWidth, cpnHeight, video)
 
         CpnVideoInfo(video)
-        VideoSeekBar(video)
+        VideoSeekBar(index, video)
     }
 }
 
@@ -116,7 +116,7 @@ private fun Modifier.videoDragDetect(
 }
 
 @Composable
-private fun CpnVideoSurface(cpnWidth: Dp, cpnHeight: Dp, video: Video) {
+private fun CpnVideoSurface(index: Int, cpnWidth: Dp, cpnHeight: Dp, video: Video) {
     val viewModel: VideoPlayViewModel = hiltViewModel()
     val navigationBarHeight =  ScreenUtil.getNavigationBarHeight()
     val originMaxVideoHeightPx = remember {
@@ -130,7 +130,8 @@ private fun CpnVideoSurface(cpnWidth: Dp, cpnHeight: Dp, video: Video) {
         contentAlignment = Alignment.Center
     ) {
 
-        if (viewModel.exoPlayStatus == Player.STATE_READY && viewModel.curVideoId == video.vid) {
+        // 同一位置只能挂一个 PlayerView，按列表下标判断，避免重复视频 id 同时挂载
+        if (index == viewModel.curVideoIndex && viewModel.exoPlayStatus == Player.STATE_READY) {
             AndroidView(
                     modifier = Modifier
                         .aspectRatio(video.width.toFloat() / video.height)
@@ -169,9 +170,9 @@ private fun CpnVideoSurface(cpnWidth: Dp, cpnHeight: Dp, video: Video) {
 }
 
 @Composable
-private fun BoxScope.VideoSeekBar(video: Video) {
+private fun BoxScope.VideoSeekBar(index: Int, video: Video) {
     val viewModel: VideoPlayViewModel = hiltViewModel()
-    if (viewModel.curVideoId == video.vid) {
+    if (index == viewModel.curVideoIndex) {
         SeekBar(
             progress = viewModel.videoProgress,
             seeking = {
