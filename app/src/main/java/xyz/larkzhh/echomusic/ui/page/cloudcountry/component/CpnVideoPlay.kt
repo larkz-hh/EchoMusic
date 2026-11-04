@@ -152,7 +152,8 @@ private fun CpnVideoSurface(index: Int, cpnWidth: Dp, cpnHeight: Dp, video: Vide
                             useController = false
                             player = viewModel.exoPlayer
                         }
-                    })
+                    },
+                    update = { view -> view.player = viewModel.exoPlayer })
 
                 if (!viewModel.videoPlaying) {
                     CommonIcon(

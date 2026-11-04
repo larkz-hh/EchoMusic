@@ -8,12 +8,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Player.STATE_READY
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.paging.PagingData
@@ -33,6 +36,8 @@ import xyz.larkzhh.echomusic.model.Video
 import xyz.larkzhh.echomusic.model.VideoUrlBean
 import xyz.larkzhh.echomusic.utils.NetworkUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.util.*
@@ -88,7 +93,32 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
 
     // 第一个视频
     lateinit var firstVideo: Video
-    lateinit var exoPlayer: ExoPlayer
+
+    // 播放器池：一个在播，另一个预加载下一条；上一条只预热缓存
+    private var players: Array<ExoPlayer>? = null
+    private var activePlayerIndex = 0
+    private val playerVids = arrayOfNulls<String>(2)
+
+    val exoPlayer: ExoPlayer
+        get() = requireNotNull(players)[activePlayerIndex]
+
+    private fun idlePlayers(): List<Int> =
+        players?.indices?.filter { it != activePlayerIndex }.orEmpty()
+
+    private fun playerHolding(vid: String?): Int? {
+        if (vid == null) {
+            return null
+        }
+        return players?.indices?.firstOrNull {
+            it != activePlayerIndex &&
+                playerVids[it] == vid &&
+                players?.get(it)?.playbackState != Player.STATE_IDLE
+        }
+    }
+
+    // 上一条缓存预热任务
+    private val warmJobs = mutableMapOf<String, Job>()
+    private val PRELOAD_BYTES = 4L * 1024 * 1024
 
     // 是否拖动进度条中
     private var seeking = false
@@ -97,9 +127,12 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
     private var mUpdateDuringTask: TimerTask? = null
     private var mHandler = Handler(Looper.getMainLooper())
 
-    private var exoPlayListener = object : Player.Listener {
+    private fun buildListener(player: ExoPlayer) = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
             super.onPlaybackStateChanged(playbackState)
+            if (player !== players?.getOrNull(activePlayerIndex)) {
+                return
+            }
             exoPlayStatus = playbackState
             if (exoPlayStatus == STATE_READY && MusicPlayController.isPlaying()) {
                 MusicPlayController.pause()
@@ -108,6 +141,9 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             super.onIsPlayingChanged(isPlaying)
+            if (player !== players?.getOrNull(activePlayerIndex)) {
+                return
+            }
             videoPlaying = isPlaying
             if (isPlaying) {
                 startUpdateDuringTask()
@@ -129,14 +165,24 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
     }
 
     /**
-     * 初始化exo播放器
+     * 初始化播放器池
      */
     fun initExoPlayerIfNeeded(context: Context) {
-        if (!::exoPlayer.isInitialized) {
-            exoPlayer = ExoPlayer.Builder(context).build().apply {
-                addListener(exoPlayListener)
+        if (players == null) {
+            players = Array(2) { index ->
+                buildPlayer(context).also { player ->
+                    player.addListener(buildListener(player))
+                    playerVids[index] = null
+                }
             }
         }
+    }
+
+    /** 解码器申请失败时允许回退，避免低端机满实例直接黑屏 */
+    @OptIn(UnstableApi::class)
+    private fun buildPlayer(context: Context): ExoPlayer {
+        val renderersFactory = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
+        return ExoPlayer.Builder(context, renderersFactory).build()
     }
 
     /**
@@ -174,17 +220,46 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
      * 释放
      */
     fun release() {
-        exoPlayer.removeListener(exoPlayListener)
-        exoPlayer.release()
+        players?.forEach { player ->
+            player.stop()
+            player.release()
+        }
+        players = null
     }
 
     /**
-     * 加载视频
+     * 加载视频：空闲播放器已预加载好就直接交换
      */
-    @OptIn(UnstableApi::class)
     fun loadVideo(url: String) {
+        val vid = curVideoId
+        val prepared = playerHolding(vid)
+        if (vid != null && prepared != null) {
+            players?.getOrNull(activePlayerIndex)?.pause()
+            activePlayerIndex = prepared
+            videoProgress = 0
+            exoPlayStatus = players?.get(prepared)?.playbackState ?: Player.STATE_IDLE
+            players?.get(prepared)?.apply {
+                playWhenReady = true
+                play()
+            }
+            prepareAround()
+            return
+        }
+
+        val player = exoPlayer
+        player.stop()
+        player.setMediaSource(buildMediaSource(url, vid))
+        player.repeatMode = Player.REPEAT_MODE_ONE
+        player.playWhenReady = true
+        player.prepare()
+        playerVids[activePlayerIndex] = vid
+        prepareAround()
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun buildMediaSource(url: String, vid: String?): ProgressiveMediaSource {
         // 缓存键用视频 id，避免地址带签名变化后缓存失效
-        val cacheKey = "${UserSpace.id}:video:${curVideoId ?: url}"
+        val cacheKey = "${UserSpace.id}:video:${vid ?: url}"
         val dataSourceFactory = CacheDataSource.Factory()
             .setCache(MediaCache.video(EchoApplication.context))
             .setUpstreamDataSourceFactory(
@@ -198,13 +273,117 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
             dataSourceFactory.setCacheWriteDataSinkFactory(null)
         }
 
-        val mediaSource = ProgressiveMediaSource.Factory(dataSourceFactory)
+        return ProgressiveMediaSource.Factory(dataSourceFactory)
             .createMediaSource(MediaItem.fromUri(Uri.parse(url)))
+    }
 
-        exoPlayer.setMediaSource(mediaSource)
-        exoPlayer.repeatMode = Player.REPEAT_MODE_ONE
-        exoPlayer.playWhenReady = true
-        exoPlayer.prepare()
+    /**
+     * 下一条用空闲播放器准备，上一条只预热缓存
+     */
+    private fun prepareAround() {
+        releaseStalePlayers()
+        prepareNeighbor(curVideoIndex + 1)
+        warmNeighbor(curVideoIndex - 1)
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun prepareNeighbor(displayIndex: Int) {
+        if (displayIndex < 0) {
+            return
+        }
+        val vid = vidAt(displayIndex) ?: return
+        if (playerHolding(vid) != null) {
+            return
+        }
+        val url = urlAt(displayIndex) ?: run {
+            getMvUrlById(vid, isPreLoad = true)
+            return
+        }
+        val slot = idlePlayers().firstOrNull { playerVids[it] == null } ?: return
+        val player = players?.get(slot) ?: return
+        player.stop()
+        player.setMediaSource(buildMediaSource(url, vid))
+        player.playWhenReady = false
+        player.prepare()
+        playerVids[slot] = vid
+    }
+
+    /** 上一条只把字节写进缓存，不占用解码器 */
+    private fun warmNeighbor(displayIndex: Int) {
+        if (displayIndex < 0) {
+            return
+        }
+        val vid = vidAt(displayIndex) ?: return
+        val url = urlAt(displayIndex) ?: run {
+            getMvUrlById(vid, isPreLoad = true)
+            return
+        }
+        warmCache(vid, url)
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun warmCache(vid: String, url: String) {
+        // 只在 Wi-Fi 预热，避免消耗流量
+        if (!NetworkUtil.isWifi(EchoApplication.context) || warmJobs.containsKey(vid)) {
+            return
+        }
+        warmJobs[vid] = viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val cacheKey = "${UserSpace.id}:video:$vid"
+                val dataSource = CacheDataSource.Factory()
+                    .setCache(MediaCache.video(EchoApplication.context))
+                    .setUpstreamDataSourceFactory(
+                        DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
+                    )
+                    .setCacheKeyFactory { cacheKey }
+                    .createDataSource()
+                val spec = DataSpec.Builder()
+                    .setUri(Uri.parse(url))
+                    .setLength(PRELOAD_BYTES)
+                    .build()
+                dataSource.open(spec)
+                val buffer = ByteArray(64 * 1024)
+                var total = 0L
+                while (total < PRELOAD_BYTES) {
+                    val read = dataSource.read(buffer, 0, buffer.size)
+                    if (read == C.RESULT_END_OF_INPUT) {
+                        break
+                    }
+                    total += read
+                }
+                dataSource.close()
+            }
+        }
+    }
+
+    /** 停掉不再是相邻项的空闲播放器 */
+    private fun releaseStalePlayers() {
+        val keep = setOf(
+            vidAt(curVideoIndex) ?: curVideoId,
+            vidAt(curVideoIndex + 1),
+            vidAt(curVideoIndex - 1),
+        )
+        idlePlayers().forEach { index ->
+            val vid = playerVids[index] ?: return@forEach
+            if (vid !in keep) {
+                players?.get(index)?.stop()
+                playerVids[index] = null
+            }
+        }
+    }
+
+    private fun vidAt(displayIndex: Int): String? = when {
+        displayIndex == 0 -> firstVideo.vid
+        displayIndex > 0 -> videoPagingItems?.itemSnapshotList?.getOrNull(displayIndex - 1)?.id?.toString()
+        else -> null
+    }
+
+    private fun urlAt(displayIndex: Int): String? {
+        val vid = vidAt(displayIndex) ?: return null
+        if (displayIndex == 0) {
+            firstVideo.urls?.firstOrNull()?.url?.let { if (it.isNotBlank()) return it }
+        }
+        return mvUrlCache[vid]?.url
     }
 
     /**
@@ -307,6 +486,9 @@ class VideoPlayViewModel @Inject constructor(private val api: NeteaseApi) : Base
                 mvUrlCache[mvid] = videoUrlBean
                 if (curVideoId == mvid && !isPreLoad) {
                     curVideoUrl = fixedUrl
+                } else if (isPreLoad) {
+                    // 地址到位后让空闲播放器开始预加载
+                    prepareAround()
                 }
             }
         }) {
