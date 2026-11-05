@@ -2,6 +2,9 @@ package xyz.larkzhh.echomusic.http
 
 import xyz.larkzhh.echomusic.model.AccountInfoResult
 import xyz.larkzhh.echomusic.model.DiscoverBannerResult
+import xyz.larkzhh.echomusic.model.DjDetailResult
+import xyz.larkzhh.echomusic.model.DjProgramResult
+import xyz.larkzhh.echomusic.model.DjRecommendResult
 import xyz.larkzhh.echomusic.model.FloorCommentResult
 import xyz.larkzhh.echomusic.model.LyricResult
 import xyz.larkzhh.echomusic.model.NewCommentResult
@@ -217,6 +220,22 @@ interface NeteaseApi {
         @Query("id") id: String,
         @Query("t") t: Int,
     ): BaseResult
+
+    // 推荐电台
+    @GET("/dj/personalize/recommend")
+    suspend fun getDjRecommend(@Query("limit") limit: Int = 12): DjRecommendResult
+
+    // 电台详情
+    @GET("/dj/detail")
+    suspend fun getDjDetail(@Query("rid") rid: Long): DjDetailResult
+
+    // 电台节目
+    @GET("/dj/program")
+    suspend fun getDjProgram(
+        @Query("rid") rid: Long,
+        @Query("limit") limit: Int = 30,
+        @Query("offset") offset: Int = 0,
+    ): DjProgramResult
 
 
     @GET("/artist/list")

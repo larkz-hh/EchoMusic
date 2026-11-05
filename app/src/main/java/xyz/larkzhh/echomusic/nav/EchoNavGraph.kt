@@ -12,6 +12,7 @@ import com.google.gson.Gson
 import xyz.larkzhh.echomusic.model.PlaylistBean
 import xyz.larkzhh.echomusic.ui.page.cloudcountry.PlayVideoPage
 import xyz.larkzhh.echomusic.ui.page.discovery.PlaylistSquarePage
+import xyz.larkzhh.echomusic.ui.page.podcast.PodcastDetailPage
 import xyz.larkzhh.echomusic.ui.page.home.HomePage
 import xyz.larkzhh.echomusic.ui.page.mine.LikedMusicPage
 import xyz.larkzhh.echomusic.ui.page.mine.PlaylistPage
@@ -70,6 +71,13 @@ fun EchoNavGraph(
         composable("${RouterUrls.PLAYLIST_SQUARE}/{${RouterKV.SQUARE_CAT}}") {
             val cat = it.arguments?.getString(RouterKV.SQUARE_CAT).orEmpty()
             PlaylistSquarePage(cat)
+        }
+        composable(
+            "${RouterUrls.PODCAST_DETAIL}/{${RouterKV.PODCAST_ID}}/{${RouterKV.PODCAST_NAME}}"
+        ) {
+            val radioId = it.arguments?.getString(RouterKV.PODCAST_ID)?.toLongOrNull() ?: 0L
+            val radioName = it.arguments?.getString(RouterKV.PODCAST_NAME).orEmpty()
+            PodcastDetailPage(radioId, radioName)
         }
         composable(
             RouterUrls.PROFILE,

@@ -5,6 +5,9 @@ import xyz.larkzhh.echomusic.http.NeteaseApi
 import xyz.larkzhh.echomusic.model.AccountInfoResult
 import xyz.larkzhh.echomusic.model.BaseResult
 import xyz.larkzhh.echomusic.model.DiscoverBannerResult
+import xyz.larkzhh.echomusic.model.DjDetailResult
+import xyz.larkzhh.echomusic.model.DjProgramResult
+import xyz.larkzhh.echomusic.model.DjRecommendResult
 import xyz.larkzhh.echomusic.model.FloorCommentResult
 import xyz.larkzhh.echomusic.model.HotSearchResult
 import xyz.larkzhh.echomusic.model.LikeListResult
@@ -230,6 +233,18 @@ class LocalNeteaseApi(
         post(
             "/weapi/cloudvideo/video/${if (t == 1) "sub" else "unsub"}",
             mapOf("id" to id)
+        )
+
+    override suspend fun getDjRecommend(limit: Int): DjRecommendResult =
+        post("/weapi/djradio/personalize/rcmd", mapOf("limit" to limit))
+
+    override suspend fun getDjDetail(rid: Long): DjDetailResult =
+        post("/weapi/djradio/v2/get", mapOf("id" to rid))
+
+    override suspend fun getDjProgram(rid: Long, limit: Int, offset: Int): DjProgramResult =
+        post(
+            "/weapi/dj/program/byradio",
+            mapOf("radioId" to rid, "limit" to limit, "offset" to offset, "asc" to false)
         )
 
     override suspend fun getSingerList(type: String, area: String): SingleListResult =

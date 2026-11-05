@@ -9,5 +9,7 @@ object RouterKV {
     const val VIDEO_OFFSET_INDEX = "videoOffsetIndex"
     const val WEB_URL = "webUrl"
     const val SQUARE_CAT = "squareCat"
+    const val PODCAST_ID = "podcastId"
+    const val PODCAST_NAME = "podcastName"
 
 }

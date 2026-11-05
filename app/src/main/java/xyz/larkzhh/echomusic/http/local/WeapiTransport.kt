@@ -111,6 +111,9 @@ class WeapiTransport {
             "/weapi/cloudvideo/group/list",
             "/weapi/videotimeline/videogroup/otherclient/get",
             "/weapi/playlist/list",
+            "/weapi/djradio/personalize/rcmd",
+            "/weapi/djradio/v2/get",
+            "/weapi/dj/program/byradio",
         )
     }
 }

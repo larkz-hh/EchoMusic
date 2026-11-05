@@ -12,6 +12,7 @@ object RouterUrls {
     const val LOCAL_MUSIC = "localMusic"
     const val LIKED_MUSIC = "likedMusic"
     const val PLAYLIST_SQUARE = "playlistSquare"
+    const val PODCAST_DETAIL = "podcastDetail"
     const val SONG_COMMENT = "songComment"
     const val PLAY_VIDEO = "playVideo"
     const val WEB = "web"
